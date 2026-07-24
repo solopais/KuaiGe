@@ -7,7 +7,7 @@ final class SniffStore: ObservableObject {
 
     /// 由 JS 注入脚本回调：捕获到一个音频 URL
     func add(url: String, source: String, referer: String?) {
-        guard let u = URL(string: url), !u.scheme.isEmpty else { return }
+        guard let u = URL(string: url), !(u.scheme?.isEmpty ?? true) else { return }
         let deduped = url
         if items.contains(where: { $0.url == deduped }) { return }
         DispatchQueue.main.async {

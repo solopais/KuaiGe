@@ -29,7 +29,7 @@ struct ContentView: View {
                     .frame(minWidth: 44)
 
                     Button("前往") { go() }
-                        .fontWeight(.semibold)
+                        .font(.system(size: 16, weight: .semibold))
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
