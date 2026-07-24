@@ -24,7 +24,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kuaige.sniffer
-        PRODUCT_NAME: 快歌
+        PRODUCT_NAME: KuaiGe
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: KuaiGe.entitlements
     info:
