@@ -5,7 +5,7 @@ enum SniffScript {
     /// 与 WKUserContentController.add(_:name:) 中的 name 保持一致
     static let handlerName = "sniff"
 
-    static let source: String = """
+    static let source: String = #"""
     (function () {
       if (window.__kgSniffInstalled) return;
       window.__kgSniffInstalled = true;
@@ -107,7 +107,7 @@ enum SniffScript {
       scan();
       setInterval(scan, 1500);
     })();
-    """
+    """#
 
     /// 把脚本里的占位符替换成真实的 handler 名称
     static func build() -> String {
