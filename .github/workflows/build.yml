@@ -1,0 +1,111 @@
+name: Build KuaiGe IPA
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'Sources/**'
+      - 'Resources/**'
+      - 'project.yml'
+      - 'KuaiGe.entitlements'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build .app (unsigned)
+        run: |
+          xcodebuild \
+            -project KuaiGe.xcodeproj \
+            -scheme KuaiGe \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -quiet
+
+      - name: Create self-signed code signing certificate
+        run: |
+          set -e
+          KEYCHAIN_PASS="temp"
+          KEYCHAIN=~/Library/Keychains/kuaige.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security list-keychains -s "$KEYCHAIN"
+
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/cert-key.pem \
+            -out /tmp/cert.pem -days 365 -nodes \
+            -subj "/CN=KuaiGe Dev/O=KuaiGe/OU=Signing" \
+            -addext "keyUsage=digitalSignature" \
+            -addext "extendedKeyUsage=codeSigning"
+
+          openssl pkcs12 -export -out /tmp/cert.p12 \
+            -legacy \
+            -inkey /tmp/cert-key.pem -in /tmp/cert.pem \
+            -passout pass:"$KEYCHAIN_PASS" -name "KuaiGe Dev"
+
+          security import /tmp/cert.p12 -k "$KEYCHAIN" -P "$KEYCHAIN_PASS"
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASS" "$KEYCHAIN"
+
+          echo "--- Available identities ---"
+          security find-identity -v -p codesigning "$KEYCHAIN" | head -10
+
+      - name: Sign with self-signed cert + inject entitlements
+        run: |
+          APP=build/Build/Products/Release-iphoneos/KuaiGe.app
+          IDENTITY="KuaiGe Dev"
+
+          echo "--- Before signing ---"
+          codesign -dv "$APP" 2>&1 || true
+
+          echo "--- Signing with $IDENTITY ---"
+          codesign \
+            --force \
+            --sign "$IDENTITY" \
+            --entitlements KuaiGe.entitlements \
+            --verbose \
+            "$APP"
+
+          echo "--- Embedded entitlements ---"
+          codesign --display --entitlements :- "$APP" 2>&1
+
+          echo "--- Signature info ---"
+          codesign -dv "$APP" 2>&1
+
+      - name: Create IPA payload
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/KuaiGe.app Payload/
+          zip -r KuaiGe.ipa Payload/
+          rm -rf Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: KuaiGe.ipa
+          path: KuaiGe.ipa
+          compression-level: 0
+
+      - name: Upload .app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: KuaiGe.app
+          path: build/Build/Products/Release-iphoneos/KuaiGe.app
+          compression-level: 0

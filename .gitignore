@@ -1,0 +1,9 @@
+# Xcode / build
+DerivedData/
+build/
+*.xcodeproj
+*.xcworkspace
+Payload/
+
+# OS
+.DS_Store
