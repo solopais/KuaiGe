@@ -6,29 +6,39 @@ struct ProfileView: View {
     @ObservedObject private var license = LicenseManager.shared
     @State private var codeText: String = ""
     @State private var copiedField: String? = nil
+    @State private var showSuccess: Bool = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.xl) {
-                    headerCard
+        ZStack {
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.xl) {
+                        headerCard
 
-                    if license.isPro {
-                        activatedCard
-                    } else {
-                        activateCard
+                        if license.isPro {
+                            activatedCard
+                                .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        } else {
+                            activateCard
+                                .transition(.opacity)
+                        }
+
+                        contactCard
+
+                        Spacer(minLength: 0)
                     }
-
-                    contactCard
-
-                    Spacer(minLength: 0)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.lg)
                 }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.lg)
+                .background(AppTheme.Color.background.ignoresSafeArea())
+                .navigationTitle("我的")
+                .navigationBarTitleDisplayMode(.inline)
+                .animation(.spring(response: 0.45, dampingFraction: 0.7), value: license.isPro)
             }
-            .background(AppTheme.Color.background.ignoresSafeArea())
-            .navigationTitle("我的")
-            .navigationBarTitleDisplayMode(.inline)
+
+            if showSuccess {
+                SuccessBurst()
+            }
         }
     }
 
@@ -103,7 +113,9 @@ struct ProfileView: View {
                     let ok = license.activate(code: codeText)
                     if ok {
                         codeText = ""
+                        showSuccess = true
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { showSuccess = false }
                     } else {
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
                     }
@@ -138,49 +150,35 @@ struct ProfileView: View {
         .shadow(color: AppTheme.Shadow.card, radius: 6, x: 0, y: 2)
     }
 
-    // MARK: - 已激活卡
+    // MARK: - 已激活卡（黑金扫光）
     private var activatedCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(AppTheme.Color.success)
-                Text("专业版已激活")
-                    .font(AppTheme.Font.title2())
-                    .foregroundColor(AppTheme.Color.textPrimary)
-            }
+        ShimmerCard {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(goldGradient)
+                    Text("专业版已激活")
+                        .font(AppTheme.Font.title2())
+                        .foregroundStyle(goldGradient)
+                }
 
-            HStack {
-                Text("状态")
-                    .font(AppTheme.Font.caption())
-                    .foregroundColor(AppTheme.Color.textSecondary)
-                Spacer()
-                Text(license.expireText)
-                    .font(AppTheme.Font.caption())
-                    .foregroundColor(AppTheme.Color.textPrimary)
-            }
+                HStack {
+                    Text("状态")
+                        .font(AppTheme.Font.caption())
+                        .foregroundColor(goldDim)
+                    Spacer()
+                    Text(license.expireText)
+                        .font(AppTheme.Font.caption())
+                        .foregroundColor(goldBright)
+                }
 
-            HStack {
                 Text("全部功能已解锁")
                     .font(AppTheme.Font.caption())
-                    .foregroundColor(AppTheme.Color.success)
-                Spacer()
-                Button {
-                    withAnimation { license.deactivate() }
-                } label: {
-                    Text("注销")
-                        .font(AppTheme.Font.caption())
-                        .foregroundColor(AppTheme.Color.error)
-                }
+                    .foregroundColor(goldBright)
             }
+            .padding(AppTheme.Spacing.lg)
         }
-        .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Color.card)
-        .cornerRadius(AppTheme.Radius.lg)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
-                .stroke(AppTheme.Color.success.opacity(0.3), lineWidth: 1)
-        )
     }
 
     // MARK: - 购买联系卡
@@ -257,6 +255,91 @@ struct ProfileView: View {
                     .padding(.vertical, 5)
                     .background(copiedField == label ? AppTheme.Color.successLight : AppTheme.Color.primaryLight)
                     .cornerRadius(AppTheme.Radius.pill)
+            }
+        }
+    }
+}
+
+// MARK: - 黑金扫光配色与组件
+private let goldGradient = LinearGradient(
+    colors: [
+        Color(red: 1.0, green: 0.92, blue: 0.66),
+        Color(red: 1.0, green: 0.843, blue: 0.0),
+        Color(red: 0.72, green: 0.525, blue: 0.043),
+        Color(red: 1.0, green: 0.843, blue: 0.0)
+    ],
+    startPoint: .topLeading,
+    endPoint: .bottomTrailing
+)
+private let goldBright = Color(red: 1.0, green: 0.9, blue: 0.62)
+private let goldDim = Color(red: 0.78, green: 0.7, blue: 0.45)
+
+/// 黑金扫光卡片：纯黑底 + 金色描边 + 循环扫光高光
+struct ShimmerCard<Content: View>: View {
+    let content: Content
+    @State private var sweep = false
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
+                    .fill(Color.black)
+            )
+            .overlay(
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [.clear, Color.white.opacity(0.5), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geo.size.width * 0.6)
+                    .rotationEffect(.degrees(18))
+                    .offset(x: sweep ? geo.size.width * 1.4 : -geo.size.width * 0.9)
+                    .allowsHitTesting(false)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.lg))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
+                    .stroke(goldGradient, lineWidth: 1.5)
+            )
+            .onAppear {
+                withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) {
+                    sweep = true
+                }
+            }
+    }
+}
+
+/// 激活成功动效：金色对勾弹簧放大 + 淡出，给用户获得感
+struct SuccessBurst: View {
+    @State private var scale: CGFloat = 0.3
+    @State private var opacity: Double = 0
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .opacity(opacity * 0.5)
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 90, weight: .bold))
+                .foregroundStyle(goldGradient)
+                .shadow(color: Color(red: 1, green: 0.84, blue: 0).opacity(0.85), radius: 24, x: 0, y: 0)
+                .scaleEffect(scale)
+                .opacity(opacity)
+        }
+        .allowsHitTesting(false)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.55)) {
+                scale = 1
+                opacity = 1
+            }
+            withAnimation(.easeOut(duration: 0.45).delay(1.0)) {
+                opacity = 0
             }
         }
     }

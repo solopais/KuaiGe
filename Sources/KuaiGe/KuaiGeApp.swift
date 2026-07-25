@@ -1,12 +1,29 @@
 import SwiftUI
+import UIKit
 
 @main
 struct KuaiGeApp: App {
+    init() {
+        configureNavigationBar()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .onAppear { triggerNetworkPermission() }
         }
+    }
+
+    /// 移除导航栏底部的 hairline 分割线（「历史记录」「我的」标题下方的黑线）
+    private func configureNavigationBar() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithDefaultBackground()
+        appearance.shadowColor = .clear
+        appearance.shadowImage = UIImage()
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        UINavigationBar.appearance().compactAppearance = appearance
+        UINavigationBar.appearance().compactScrollEdgeAppearance = appearance
     }
 
     /// 进入 App 立即发起一次轻量网络请求，触发 iOS「无线数据」权限弹窗。

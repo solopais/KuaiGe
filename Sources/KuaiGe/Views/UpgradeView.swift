@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - 升级 / 激活 相关通知
 extension Notification.Name {
@@ -111,6 +112,31 @@ struct UpgradeView: View {
             HStack(spacing: AppTheme.Spacing.lg) {
                 contactChip(icon: "number", label: "QQ", value: "2260354231")
                 contactChip(icon: "message.fill", label: "微信", value: "ponboor")
+            }
+
+            Divider().background(AppTheme.Color.divider)
+            Button {
+                if let url = URL(string: "https://www.goofish.com/personal?userId=2901672735") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: "bag.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppTheme.Color.primary)
+                        .frame(width: 18)
+                    Text("闲鱼店铺")
+                        .font(AppTheme.Font.caption())
+                        .foregroundColor(AppTheme.Color.textSecondary)
+                        .frame(width: 60, alignment: .leading)
+                    Text("点击前往店铺")
+                        .font(AppTheme.Font.bodyMedium())
+                        .foregroundColor(AppTheme.Color.primary)
+                    Spacer()
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppTheme.Color.textTertiary)
+                }
             }
         }
         .padding(AppTheme.Spacing.lg)
