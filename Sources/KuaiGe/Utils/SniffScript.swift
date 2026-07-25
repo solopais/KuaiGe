@@ -1,11 +1,11 @@
 import Foundation
 
-/// 注入到 WKWebView 的嗅探脚本（通用：拦截任意平台的音频/视频资源）
+/// 注入到 WKWebView 的嗅探脚本（通用：拦截任意页面上真实播放的音频/视频资源）
 enum SniffScript {
     /// 与 WKUserContentController.add(_:name:) 中的 name 保持一致
     static let handlerName = "sniff"
 
-    /// 通用音频/视频 URL 匹配（覆盖主流平台 CDN + 常见格式）
+    /// 通用音频/视频 URL 匹配（只看「真媒体」，不再用 CDN 域名误判，避免把 .js 当音频）
     static let source: String = #"""
     (function () {
       if (window.__kgSniffInstalled) return;
@@ -14,68 +14,60 @@ enum SniffScript {
       // ========== 去重（同一 URL 只报告一次）==========
       var reported = {};
 
-      function isAudioUrl(u) {
-        if (!u || typeof u !== 'string') return false;
+      function extOf(u) {
         try {
-          var s = u.toLowerCase();
-          // 1) 音频扩展名
-          if (/\.(mp3|m4a|aac|wav|flac|ogg|opus|wma|ape|amr)(\?|#|$)/.test(s)) return true;
-          // 2) 视频扩展名（很多平台用 video 标签播音频）
-          if (/\.(mp4|webm|mkv|avi|mov|ts)(\?|#|$)/.test(s)) return true;
-          // 3) 流媒体 manifest
-          if (/\.(m3u8|m3u|f4m)(\?|#|$)/.test(s)) return true;
-          // 4) 主流平台 CDN / OSS 域名
-          var cdnPatterns = [
-            // 腾讯系
-            'myqcloud.com', '.cos.', 'cdn-go.cn', 'cncdnzbj.com',
-            'dl.stream.qqmusic.qq.com', 'isure.stream.qqmusic.qq.com',
-            'y.qq.com', 'qqmusic.qq.com',
-            // 网易云
-            'music.163.com', 'm10.music.126.net', 'm7.music.126.net',
-            'p1.music.126.net', 'p2.music.126.net',
-            // 酷狗
-            'kugou.com', 'imge.kugou.com', 'cdn.kugou.com',
-            'fs.kugou.com', 'mr.kugou.com',
-            // 酷我
-            'kuwo.cn', 'kuwoyy.com', 'other.web.rh01.sycdn.kuwo.cn',
-            'other.web.nm01.sycdn.kuwo.cn',
-            // 咪咕
-            'migu.cn', 'dsmusic.migu.cn',
-            // B站
-            'bilivideo.com', 'hdslb.com', 'acgvideo.com', 'bilibili.com',
-            // 抖音 / 快歌 / 短视频
-            'kuaigeai.cn', 'douyin.com', 'douyinpic.com', 'bytecdntp.com',
-            'bytedancecdn.com', 'toutiao.com', 'snssdk.com',
-            // 阿里云 OSS
-            'aliyuncs.com', '.oss-', 'oss-cn-',
-            // 七牛
-            'qiniucdn.com', 'qbox.me', 'qnssl.com', 'cdn-qiniu.',
-            // 又拍云
-            'upaiyun.com', 'upcdn.com',
-            // 华为云 OBS
-            'obs.myhuaweicloud.com',
-            // AWS S3 / CloudFront
-            'amazonaws.com', 'cloudfront.net',
-            // 其他常见 CDN
-            'cdn-cos.', 'cdn.jsdelivr.net', 'unpkg.com', 'cdnjs.'
-          ];
-          for (var i = 0; i < cdnPatterns.length; i++) {
-            if (s.indexOf(cdnPatterns[i]) !== -1) return true;
-          }
-          // 5) blob URL（可能是音视频）
-          if (s.indexOf('blob:') === 0) return true;
-          return false;
-        } catch (e) { return false; }
+          var s = String(u).split('?')[0].split('#')[0].toLowerCase();
+          var m = s.match(/\.([a-z0-9]+)$/);
+          return m ? m[1] : '';
+        } catch (e) { return ''; }
       }
 
-      function report(url, source, referer) {
+      // 明显不是媒体的扩展名——即使出现在 <audio>/<video> 上也跳过
+      var NON_MEDIA = ['js','mjs','css','html','htm','json','php','asp','aspx','jsp',
+        'woff','woff2','ttf','otf','eot','png','jpg','jpeg','gif','svg','ico','webp',
+        'xml','wasm','map','txt'];
+
+      function isNonMediaExt(u) { return NON_MEDIA.indexOf(extOf(u)) !== -1; }
+
+      // 真媒体扩展名（不含 .js/.css 等）
+      function isMediaExt(u) {
+        var e = extOf(u);
+        if (!e || isNonMediaExt(u)) return false;
+        return /^(mp3|m4a|aac|wav|flac|ogg|opus|wma|ape|amr|mp4|webm|mkv|avi|mov|ts|m3u8|m3u|f4m|mpd)$/.test(e);
+      }
+
+      // 是否应当作为媒体上报：blob 或 真媒体扩展名
+      function isMediaUrl(u) {
+        if (!u || typeof u !== 'string') return false;
+        if (u.indexOf('blob:') === 0) return true;
+        return isMediaExt(u);
+      }
+
+      function typeFromExt(u) {
+        var e = extOf(u);
+        if (/^(mp4|webm|mkv|avi|mov|ts|m3u8|m3u|f4m|mpd)$/.test(e)) return 'video';
+        if (/^(mp3|m4a|aac|wav|flac|ogg|opus|wma|ape|amr)$/.test(e)) return 'audio';
+        return 'other';
+      }
+
+      function typeFromContentType(ct) {
+        ct = (ct || '').toLowerCase();
+        if (ct.indexOf('video/') === 0) return 'video';
+        if (ct.indexOf('audio/') === 0) return 'audio';
+        if (/mpegurl/.test(ct)) return 'video';
+        if (/x-m4a|ogg|webm|mp4|quicktime|flac|wav|aac|mp3/.test(ct)) return 'audio';
+        return 'other';
+      }
+
+      function report(url, source, referer, mediaType) {
         try {
           if (!url || reported[url]) return;
           reported[url] = true;
           window.webkit.messageHandlers.__HANDLER__.postMessage({
             url: url,
             source: source,
-            referer: referer || (document.location ? document.location.href : '')
+            referer: referer || (document.location ? document.location.href : ''),
+            mediaType: mediaType || 'other'
           });
         } catch (e) {}
       }
@@ -89,29 +81,43 @@ enum SniffScript {
             configurable: true,
             get: desc.get,
             set: function (v) {
-              try { if (isAudioUrl(v)) report(v, 'media-src', document.referrer); } catch (e) {}
+              try {
+                if (typeof v === 'string' && v) {
+                  var t = (this.tagName === 'VIDEO') ? 'video' : 'audio';
+                  if (isMediaUrl(v)) {
+                    var te = typeFromExt(v); if (te !== 'other') t = te;
+                    report(v, 'media-src', document.referrer, t);
+                  } else if (!isNonMediaExt(v)) {
+                    // 媒体元素上挂了无扩展名的直链（如签名 URL），按元素类型上报
+                    report(v, 'media-src', document.referrer, t);
+                  }
+                }
+              } catch (e) {}
               return origSrcSet.call(this, v);
             }
           });
         }
       } catch (e) {}
 
-      // 拦截 <source> 标签的 src 属性变化
+      // ========== 2) 拦截 <source>/<audio>/<video> 的 src/srcset 属性 ==========
       try {
         var origSetAttr = Element.prototype.setAttribute;
         Element.prototype.setAttribute = function (name, value) {
           try {
             if ((name === 'src' || name === 'srcset') &&
-                (this.tagName === 'SOURCE' || this.tagName === 'AUDIO' || this.tagName === 'VIDEO' ||
-                 this.tagName === 'TRACK')) {
-              if (isAudioUrl(value)) report(value, 'source-attr', document.referrer);
+                (this.tagName === 'SOURCE' || this.tagName === 'AUDIO' || this.tagName === 'VIDEO')) {
+              var val = (name === 'srcset') ? String(value).split(' ')[0] : value;
+              if (typeof val === 'string' && val) {
+                if (isMediaUrl(val)) report(val, 'source-attr', document.referrer, typeFromExt(val));
+                else if (!isNonMediaExt(val)) report(val, 'source-attr', document.referrer, 'other');
+              }
             }
           } catch (e) {}
           return origSetAttr.call(this, name, value);
         };
       } catch (e) {}
 
-      // ========== 2) 拦截 fetch ==========
+      // ========== 3) 拦截 fetch ==========
       try {
         var origFetch = window.fetch;
         window.fetch = function (input, init) {
@@ -119,23 +125,23 @@ enum SniffScript {
                    : (typeof input === 'string' ? input : '');
           var ref = '';
           try { ref = (init && init.headers && init.headers.get)
-                    ? init.headers.get('Referer')
-                    : (document.referrer || ''); } catch(e) {}
-          if (isAudioUrl(url)) report(url, 'fetch', ref);
+                        ? init.headers.get('Referer')
+                        : (document.referrer || ''); } catch(e) {}
+          // 请求 URL 本身带媒体扩展名才报（不会误报 .js）
+          if (isMediaUrl(url)) report(url, 'fetch', ref, typeFromExt(url));
           return origFetch.apply(this, arguments).then(function (resp) {
             try {
               var ct = (resp && resp.headers && resp.headers.get)
                        ? resp.headers.get('Content-Type') : '';
-              if (ct && /audio|mpegurl|octet-stream|mp4|quicktime|video\/mp4/.test(ct.toLowerCase())) {
-                report(url, 'fetch-resp', ref);
-              }
+              var mt = typeFromContentType(ct);
+              if (mt !== 'other') report(url, 'fetch-resp', ref, mt);
             } catch (e) {}
             return resp;
           });
         };
       } catch (e) {}
 
-      // ========== 3) 拦截 XMLHttpRequest ==========
+      // ========== 4) 拦截 XMLHttpRequest ==========
       try {
         var origOpen = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (m, url) {
@@ -149,8 +155,10 @@ enum SniffScript {
             try {
               if (self.readyState === 4) {
                 var ct = (self.getResponseHeader && self.getResponseHeader('Content-Type')) || '';
-                if (isAudioUrl(self.__kgUrl) || /audio|mpegurl|octet-stream|mp4|quicktime|video\/mp4/.test(ct.toLowerCase())) {
-                  report(self.__kgUrl, 'xhr', document.referrer);
+                var mt = typeFromContentType(ct);
+                if (isMediaUrl(self.__kgUrl) || mt !== 'other') {
+                  report(self.__kgUrl, 'xhr', document.referrer,
+                         mt !== 'other' ? mt : typeFromExt(self.__kgUrl));
                 }
               }
             } catch (e) {}
@@ -159,30 +167,17 @@ enum SniffScript {
         };
       } catch (e) {}
 
-      // ========== 4) 拦截 blob URL 创建（很多平台用 blob 播放）==========
+      // ========== 5) 拦截 blob URL 创建（很多平台用 blob 播放）==========
       try {
         var origCreateURL = URL.createObjectURL;
         URL.createObjectURL = function (blob) {
           var url = origCreateURL.apply(this, arguments);
           try {
-            if (blob && (blob.type || '').indexOf('audio') !== -1) {
-              report(url, 'blob-audio', document.referrer);
-            }
-            if (blob && (blob.type || '').indexOf('video') !== -1) {
-              report(url, 'blob-video', document.referrer);
-            }
+            var bt = blob && blob.type ? blob.type : '';
+            if (bt.indexOf('audio') !== -1) report(url, 'blob-audio', document.referrer, 'audio');
+            else if (bt.indexOf('video') !== -1) report(url, 'blob-video', document.referrer, 'video');
           } catch (e) {}
           return url;
-        };
-      } catch (e) {}
-
-      // ========== 5) 拦截 MediaSource / HLS ==========
-      try {
-        var origAddSourceBuffer = MediaSource.prototype.addSourceBuffer;
-        MediaSource.prototype.addSourceBuffer = function (mime) {
-          // 记录这个 MediaSource 正在被使用，后续通过周期扫描关联 URL
-          this.__kgMime = mime;
-          return origAddSourceBuffer.apply(this, arguments);
         };
       } catch (e) {}
 
@@ -193,14 +188,23 @@ enum SniffScript {
           for (var i = 0; i < els.length; i++) {
             var el = els[i];
             var s = el.src || el.currentSrc || el.getAttribute('src');
-            if (s && isAudioUrl(s)) report(s, 'media-element-scan', document.referrer);
-
-            // 也检查 <source> 子元素
+            if (s && typeof s === 'string') {
+              var t = (el.tagName === 'VIDEO') ? 'video' : 'audio';
+              if (isMediaUrl(s)) {
+                var te = typeFromExt(s); if (te !== 'other') t = te;
+                report(s, 'media-element-scan', document.referrer, t);
+              } else if (!isNonMediaExt(s) && s.indexOf('blob:') !== 0) {
+                report(s, 'media-element-scan', document.referrer, t);
+              }
+            }
             if (el.querySelector) {
               var sources = el.querySelectorAll('source');
               for (var j = 0; j < sources.length; j++) {
                 var ss = sources[j].src || sources[j].getAttribute('src');
-                if (ss && isAudioUrl(ss)) report(ss, 'nested-source', document.referrer);
+                if (ss && typeof ss === 'string') {
+                  if (isMediaUrl(ss)) report(ss, 'nested-source', document.referrer, typeFromExt(ss));
+                  else if (!isNonMediaExt(ss) && ss.indexOf('blob:') !== 0) report(ss, 'nested-source', document.referrer, 'other');
+                }
               }
             }
           }
@@ -211,9 +215,7 @@ enum SniffScript {
 
       // ========== 7) 监听 DOM 变化（SPA 动态加载内容）==========
       try {
-        var observer = new MutationObserver(function () {
-          scan();
-        });
+        var observer = new MutationObserver(function () { scan(); });
         observer.observe(document.documentElement, {
           childList: true,
           subtree: true,

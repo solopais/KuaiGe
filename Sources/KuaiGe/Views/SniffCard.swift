@@ -1,76 +1,17 @@
 import SwiftUI
+import AVKit
 
-/// 嗅探结果列表（卡哇伊风格）
-struct SniffResultView: View {
+/// 嗅探结果卡片（音频提取页 / 视频提取页 / 历史页 共用）
+/// 提供：复制直链、播放（内嵌播放器）、下载、分享、下载状态展示
+struct SniffCard: View {
+    let item: SniffedMedia
     @ObservedObject var store: SniffStore
-    @ObservedObject var downloader: DownloadManager
-    @Environment(\.dismiss) private var dismiss
+    @Binding var playingURL: String?
 
-    @State private var playingURL: String? = nil
     @State private var showShareSheet = false
     @State private var shareItem: URL? = nil
 
     var body: some View {
-        NavigationView {
-            Group {
-                if store.items.isEmpty {
-                    emptyView
-                } else {
-                    resultList
-                }
-            }
-            .background(KawaiiTheme.Color.cream.ignoresSafeArea())
-            .navigationTitle("🎵 嗅探结果")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if !store.items.isEmpty {
-                        Button("清空", role: .destructive) { withAnimation { store.clear() } }
-                            .foregroundColor(KawaiiTheme.Color.coral)
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") { dismiss() }
-                        .fontWeight(.medium)
-                        .foregroundColor(KawaiiTheme.Color.sakuraPink)
-                }
-            }
-        }
-    }
-
-    // MARK: - 空状态
-    private var emptyView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Text("🔍")
-                .font(.system(size: 56))
-            Text("还没有嗅探到音频")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(KawaiiTheme.Color.textDark)
-            Text("粘贴分享链接并打开页面\n点击播放按钮，音频会自动出现～")
-                .font(.subheadline)
-                .foregroundColor(KawaiiTheme.Color.textLight)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            Spacer()
-        }
-    }
-
-    // MARK: - 结果列表
-    private var resultList: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(store.items) { item in
-                    resultCard(item)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-    }
-
-    // MARK: - 单条结果卡片
-    private func resultCard(_ item: SniffedMedia) -> some View {
         KawaiiCard(padding: 14) {
             VStack(alignment: .leading, spacing: 10) {
                 // 顶部：文件名 + 来源标签
@@ -91,7 +32,7 @@ struct SniffResultView: View {
                     KawaiiTag(text: sourceTag(item.source), color: tagColor(item.source))
                 }
 
-                // URL（可折叠）
+                // URL（可折叠直链）
                 Text(item.url)
                     .font(.caption)
                     .foregroundColor(KawaiiTheme.Color.textLight.opacity(0.6))
@@ -103,7 +44,6 @@ struct SniffResultView: View {
 
                 // 操作按钮行
                 HStack(spacing: 10) {
-                    // 复制
                     actionButton(
                         icon: "doc.on.doc",
                         label: "复制",
@@ -112,29 +52,22 @@ struct SniffResultView: View {
                         UIPasteboard.general.string = item.url
                     }
 
-                    // 播放预览
                     actionButton(
                         icon: playingURL == item.url ? "pause.circle.fill" : "play.circle.fill",
                         label: playingURL == item.url ? "暂停" : "播放",
                         color: KawaiiTheme.Color.sakuraPink
                     ) {
-                        if playingURL == item.url {
-                            playingURL = nil
-                        } else {
-                            playingURL = item.url
-                        }
+                        playingURL = (playingURL == item.url) ? nil : item.url
                     }
 
-                    // 下载
                     actionButton(
                         icon: "arrow.down.circle.fill",
                         label: "下载",
                         color: KawaiiTheme.Color.mint
                     ) {
-                        downloader.download(item, store: store) { _ in }
+                        DownloadManager.shared.download(item, store: store) { _ in }
                     }
 
-                    // 分享（下载后可用）
                     if let path = item.downloadedLocalPath {
                         actionButton(
                             icon: "square.and.arrow.up",
@@ -148,7 +81,7 @@ struct SniffResultView: View {
                 }
 
                 // 下载状态
-                if let st = downloader.status[item.url] {
+                if let st = DownloadManager.shared.status[item.url] {
                     HStack(spacing: 4) {
                         Image(systemName: st.contains("失败") || st.contains("无效") ? "xmark.circle" :
                               st.contains("已保存") ? "checkmark.circle" : "arrow.triangle.2.circlepath")
@@ -190,7 +123,7 @@ struct SniffResultView: View {
         switch source {
         case "media-src": return "媒体元素 src"
         case "fetch": return "Fetch 请求"
-        case "fetch-resp": return "Fetch 响应（音频）"
+        case "fetch-resp": return "Fetch 响应（媒体）"
         case "xhr": return "XHR 请求"
         case "media-element-scan": return "页面扫描发现"
         case "nested-source": return "嵌套 <source>"
@@ -233,4 +166,14 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - 内嵌播放器（音频 / 视频通用）
+struct MediaPlayerView: View {
+    let url: URL
+
+    var body: some View {
+        VideoPlayer(player: AVPlayer(url: url))
+            .edgesIgnoringSafeArea(.all)
+    }
 }

@@ -3,48 +3,33 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var store = SniffStore()
     @StateObject private var downloader = DownloadManager()
-
-    @State private var urlText: String = ""
-    @State private var loadURL: URL? = nil
-    @State private var isLoading: Bool = false
-    @State private var progress: Double = 0
     @State private var selectedTab: Int = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // ---- Tab 0: 首页 ----
-            HomeView(
-                store: store,
-                downloader: downloader,
-                onOpenSniff: { selectedTab = 1 }
-            )
-            .tabItem {
-                Image(systemName: "house.fill")
-                Text("首页")
-            }
-            .tag(0)
+            // ---- Tab 0: 音频资源提取 ----
+            ExtractorView(mode: .audio, store: store)
+                .tabItem {
+                    Image(systemName: "music.note")
+                    Text("音频提取")
+                }
+                .tag(0)
 
-            // ---- Tab 1: 嗅探（浏览器）----
-            SniffBrowserView(
-                store: store,
-                urlText: $urlText,
-                loadURL: $loadURL,
-                isLoading: $isLoading,
-                progress: $progress
-            )
-            .tabItem {
-                Image(systemName: "magnifyingglass")
-                Text("嗅探")
-            }
-            .tag(1)
+            // ---- Tab 1: 视频资源提取 ----
+            ExtractorView(mode: .video, store: store)
+                .tabItem {
+                    Image(systemName: "film")
+                    Text("视频提取")
+                }
+                .tag(1)
 
-            // ---- Tab 2: 历史 ----
+            // ---- Tab 2: 历史记录 ----
             HistoryView(store: store, downloader: downloader)
-            .tabItem {
-                Image(systemName: "clock.fill")
-                Text("历史")
-            }
-            .tag(2)
+                .tabItem {
+                    Image(systemName: "clock.fill")
+                    Text("历史")
+                }
+                .tag(2)
         }
         .tint(KawaiiTheme.Color.sakuraPink)
         .onAppear {
@@ -65,20 +50,25 @@ struct ContentView: View {
     }
 }
 
-// MARK: - 嗅探浏览器页（从原 ContentView 拆出）
-struct SniffBrowserView: View {
+// MARK: - 提取页（音频 / 视频 共用）：链接栏 + 浏览器 + 内联结果
+struct ExtractorView: View {
+    let mode: MediaKind
     @ObservedObject var store: SniffStore
-    @Binding var urlText: String
-    @Binding var loadURL: URL?
-    @Binding var isLoading: Bool
-    @Binding var progress: Double
 
-    @State private var showSniffResults = false
+    @State private var urlText: String = ""
+    @State private var loadURL: URL? = nil
+    @State private var isLoading: Bool = false
+    @State private var progress: Double = 0
+    @State private var playingURL: String? = nil
+
+    private var filtered: [SniffedMedia] {
+        mode == .audio ? store.audioItems : store.videoItems
+    }
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 链接栏（卡哇伊风格）
+                // 链接栏（与浏览器同页，粘贴即加载，无需跳转重贴）
                 linkBar
 
                 Divider()
@@ -98,19 +88,33 @@ struct SniffBrowserView: View {
                         .padding(.bottom, 4)
                 }
 
-                // 底部嗅探提示条
-                if !store.items.isEmpty {
-                    sniffHintBar
+                // 内联结果
+                if !filtered.isEmpty {
+                    resultsHeader
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(filtered) { item in
+                                SniffCard(item: item, store: store, playingURL: $playingURL)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
                 }
             }
-            .navigationTitle("🔍 嗅探")
+            .navigationTitle(mode == .audio ? "🎵 音频提取" : "🎬 视频提取")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.light, for: .navigationBar)
+            .sheet(isPresented: Binding(
+                get: { playingURL != nil },
+                set: { if !$0 { playingURL = nil } }
+            )) {
+                if let u = playingURL, let url = URL(string: u) {
+                    MediaPlayerView(url: url)
+                }
+            }
         }
         .navigationViewStyle(.stack)
-        .sheet(isPresented: $showSniffResults) {
-            SniffResultView(store: store, downloader: DownloadManager.shared)
-        }
     }
 
     // MARK: 链接栏
@@ -144,34 +148,33 @@ struct SniffBrowserView: View {
         .background(KawaiiTheme.Color.cream)
     }
 
-    // MARK: 嗅探提示条
-    private var sniffHintBar: some View {
-        Button {
-            showSniffResults = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "music.note")
-                    .font(.caption)
-                Text("已嗅探到 \(store.items.count) 条音频，点击查看 →")
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                LinearGradient(
-                    colors: [KawaiiTheme.Color.sakuraPink, KawaiiTheme.Color.coral],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .cornerRadius(KawaiiTheme.Radius.pill)
-            .shadow(color: KawaiiTheme.Shadow.button, radius: 4, y: 2)
+    // MARK: 结果头部条
+    private var resultsHeader: some View {
+        HStack(spacing: 6) {
+            Image(systemName: mode == .audio ? "music.note" : "film")
+                .font(.caption)
+            Text("已嗅探到 \(filtered.count) 条\(mode == .audio ? "音频" : "视频")，点击播放或下载 →")
+                .font(.caption)
+                .fontWeight(.medium)
+            Spacer()
+            Button("清空") { withAnimation { store.clear() } }
+                .font(.caption)
+                .foregroundColor(KawaiiTheme.Color.coral)
         }
+        .foregroundColor(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            LinearGradient(
+                colors: [KawaiiTheme.Color.sakuraPink, KawaiiTheme.Color.coral],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .cornerRadius(KawaiiTheme.Radius.pill)
         .padding(.horizontal)
         .padding(.bottom, 6)
-        .animation(.spring(response: 0.3), value: store.items.count)
+        .animation(.spring(response: 0.3), value: filtered.count)
     }
 
     private func go() {
