@@ -29,17 +29,11 @@ jobs:
         timeout-minutes: 10
         run: |
           set -e
-
-          # 方案 A：直接下载二进制（最快）
           XCG_VERSION="2.35.0"
           XCG_URL="https://github.com/yonaskolb/XcodeGen/releases/download/${XCG_VERSION}/xcodegen.zip"
-
-          echo "--- 尝试直接下载 XcodeGen ${XCG_VERSION} ---"
           if curl -fSL "$XCG_URL" -o /tmp/xcodegen.zip; then
             mkdir -p /usr/local/bin
-            # xcodegen.zip 解压后根目录就是 xcodegen 可执行文件
             unzip -o /tmp/xcodegen.zip -d /tmp/xcodegen_tmp/
-            # 找到解压出的可执行文件并安装
             FOUND=$(find /tmp/xcodegen_tmp -type f -name "xcodegen" | head -1)
             if [ -n "$FOUND" ]; then
               cp "$FOUND" /usr/local/bin/xcodegen
@@ -48,18 +42,11 @@ jobs:
               echo "✅ XcodeGen 二进制安装成功"
               xcodegen version
               exit 0
-            else
-              echo "⚠️ zip 中未找到 xcodegen 可执行文件，回退到 Homebrew"
             fi
-          else
-            echo "⚠️ 直接下载失败 (HTTP 非 200)，回退到 Homebrew"
           fi
-
-          # 方案 B：Homebrew 安装（较慢但可靠）
-          echo "--- Homebrew 安装 XcodeGen ---"
+          echo "--- Homebrew 安装 ---"
           brew update --auto-update || true
           brew install xcodegen
-          echo "✅ XcodeGen 通过 Homebrew 安装成功"
           xcodegen version
 
       - name: Generate Xcode project
@@ -79,54 +66,15 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             -quiet
 
-      - name: Create self-signed code signing certificate
-        timeout-minutes: 5
-        run: |
-          set -e
-          KEYCHAIN_PASS="temp"
-          KEYCHAIN=~/Library/Keychains/kuaige.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
-          security default-keychain -s "$KEYCHAIN"
-          security list-keychains -s "$KEYCHAIN"
-
-          openssl req -x509 -newkey rsa:2048 -keyout /tmp/cert-key.pem \
-            -out /tmp/cert.pem -days 365 -nodes \
-            -subj "/CN=KuaiGe Dev/O=KuaiGe/OU=Signing" \
-            -addext "keyUsage=digitalSignature" \
-            -addext "extendedKeyUsage=codeSigning"
-
-          openssl pkcs12 -export -out /tmp/cert.p12 \
-            -inkey /tmp/cert-key.pem -in /tmp/cert.pem \
-            -passout pass:"$KEYCHAIN_PASS" -name "KuaiGe Dev"
-
-          security import /tmp/cert.p12 -k "$KEYCHAIN" -P "$KEYCHAIN_PASS"
-
-          security set-key-partition-list -S apple-tool:,apple:,codesign: \
-            -s -k "$KEYCHAIN_PASS" "$KEYCHAIN"
-
-          echo "--- Available identities ---"
-          security find-identity -v -p codesigning "$KEYCHAIN" | head -10
-
-      - name: Sign with self-signed cert + inject entitlements
-        timeout-minutes: 15
+      # Ad-hoc 签名：不创建证书、不验证链路，秒完成。
+      # TrollStore 安装时会用自己的证书重新签名，所以 CI 里只需让 .app 合法即可。
+      - name: Ad-hoc sign + inject entitlements
         run: |
           APP=build/Build/Products/Release-iphoneos/KuaiGe.app
-          IDENTITY="KuaiGe Dev"
-
-          echo "--- Signing with $IDENTITY ---"
-          codesign \
-            --force \
-            --deep \
-            --sign "$IDENTITY" \
-            --entitlements KuaiGe.entitlements \
-            "$APP"
-
-          echo "--- Verify ---"
-          codesign -dv "$APP" 2>&1 || true
+          codesign --force --deep --sign - --entitlements KuaiGe.entitlements "$APP"
+          echo "✅ Ad-hoc 签名完成"
 
       - name: Create IPA payload
-        timeout-minutes: 5
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/KuaiGe.app Payload/
