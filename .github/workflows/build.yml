@@ -55,6 +55,7 @@ jobs:
       - name: Build .app (unsigned)
         timeout-minutes: 15
         run: |
+          set -o pipefail
           xcodebuild \
             -project KuaiGe.xcodeproj \
             -scheme KuaiGe \
@@ -64,20 +65,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            -quiet
+            2>&1 | tee build.log || (echo "❌ 构建失败，尾部日志：" && tail -50 build.log && exit 1)
 
       # Ad-hoc 签名：不创建证书、不验证链路，秒完成。
       # TrollStore 安装时会用自己的证书重新签名，所以 CI 里只需让 .app 合法即可。
       - name: Ad-hoc sign + inject entitlements
         run: |
-          APP=build/Build/Products/Release-iphoneos/KuaiGe.app
+          APP=$(find build -name "*.app" -path "*iphoneos*" | head -1)
+          echo "📦 找到 App 包: $APP"
+          if [ -z "$APP" ]; then echo "❌ 未找到 .app 构建产物" && exit 1; fi
           codesign --force --deep --sign - --entitlements KuaiGe.entitlements "$APP"
           echo "✅ Ad-hoc 签名完成"
 
       - name: Create IPA payload
         run: |
+          APP=$(find build -name "*.app" -path "*iphoneos*" | head -1)
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/KuaiGe.app Payload/
+          cp -R "$APP" Payload/
           zip -r KuaiGe.ipa Payload/
           rm -rf Payload
 
@@ -92,5 +96,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KuaiGe.app
-          path: build/Build/Products/Release-iphoneos/KuaiGe.app
+          path: build/Build/Products/Release-iphoneos/*.app
           compression-level: 0
