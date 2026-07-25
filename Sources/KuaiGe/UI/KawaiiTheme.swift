@@ -4,43 +4,43 @@ import SwiftUI
 
 enum AppTheme {
 
-    // MARK: - 色板
+    // MARK: - 色板（注意：嵌套 enum 名为 Color，内部必须用 SwiftUI.Color 完全限定，否则会遮蔽）
     enum Color {
         // ---- 主色：国际克莱因蓝 (#002FA7) ----
-        static let primary = Color(red: 0, green: 0.184, blue: 0.651)
-        static let primaryLight = Color(red: 0, green: 0.184, blue: 0.651).opacity(0.08)
-        static let primaryPressed = Color(red: 0, green: 0.12, blue: 0.5)
+        static let primary = SwiftUI.Color(red: 0, green: 0.184, blue: 0.651)
+        static let primaryLight = SwiftUI.Color(red: 0, green: 0.184, blue: 0.651).opacity(0.08)
+        static let primaryPressed = SwiftUI.Color(red: 0, green: 0.12, blue: 0.5)
 
         // ---- 中性色 ----
-        static let background = Color.white
-        static let surface = Color(red: 0.973, green: 0.976, blue: 0.98)
-        static let card = Color.white
-        static let border = Color.black.opacity(0.06)
-        static let borderStrong = Color.black.opacity(0.12)
-        static let divider = Color.black.opacity(0.05)
+        static let background = SwiftUI.Color.white
+        static let surface = SwiftUI.Color(red: 0.973, green: 0.976, blue: 0.98)
+        static let card = SwiftUI.Color.white
+        static let border = SwiftUI.Color.black.opacity(0.06)
+        static let borderStrong = SwiftUI.Color.black.opacity(0.12)
+        static let divider = SwiftUI.Color.black.opacity(0.05)
 
         // ---- 文字 ----
-        static let textPrimary = Color(red: 0.102, green: 0.102, blue: 0.18)      // #1A1A2E
-        static let textSecondary = Color(red: 0.42, green: 0.447, blue: 0.502)       // #6B7280
-        static let textTertiary = Color(red: 0.62, green: 0.635, blue: 0.671)        // #9EA2AB
-        static let textOnPrimary = Color.white
+        static let textPrimary = SwiftUI.Color(red: 0.102, green: 0.102, blue: 0.18)
+        static let textSecondary = SwiftUI.Color(red: 0.42, green: 0.447, blue: 0.502)
+        static let textTertiary = SwiftUI.Color(red: 0.62, green: 0.635, blue: 0.671)
+        static let textOnPrimary = SwiftUI.Color.white
 
         // ---- 语义色 ----
-        static let success = Color(red: 0.063, green: 0.725, blue: 0.506)           // #10B981
-        static let successLight = Color(red: 0.063, green: 0.725, blue: 0.506).opacity(0.1)
-        static let error = Color(red: 0.937, green: 0.267, blue: 0.267)             // #EF4444
-        static let errorLight = Color(red: 0.937, green: 0.267, blue: 0.267).opacity(0.08)
-        static let warning = Color(red: 1.0, green: 0.686, blue: 0.059)             // #FFAF0F
+        static let success = SwiftUI.Color(red: 0.063, green: 0.725, blue: 0.506)
+        static let successLight = SwiftUI.Color(red: 0.063, green: 0.725, blue: 0.506).opacity(0.1)
+        static let error = SwiftUI.Color(red: 0.937, green: 0.267, blue: 0.267)
+        static let errorLight = SwiftUI.Color(red: 0.937, green: 0.267, blue: 0.267).opacity(0.08)
+        static let warning = SwiftUI.Color(red: 1.0, green: 0.686, blue: 0.059)
 
         // ---- 暗色模式 ----
         enum Dark {
-            static let background = Color(red: 0.086, green: 0.086, blue: 0.114)   // #16161D
-            static let surface = Color(red: 0.122, green: 0.122, blue: 0.157)      // #1F1F28
-            static let card = Color(red: 0.157, green: 0.157, blue: 0.204)         // #282834
-            static let textPrimary = Color(red: 0.957, green: 0.957, blue: 0.969)  // #F4F4F7
-            static let textSecondary = Color(red: 0.659, green: 0.659, blue: 0.702) // #A8A8B3
-            static let border = Color.white.opacity(0.06)
-            static let primary = Color(red: 0.373, green: 0.451, blue: 0.941)     // 亮蓝
+            static let background = SwiftUI.Color(red: 0.086, green: 0.086, blue: 0.114)
+            static let surface = SwiftUI.Color(red: 0.122, green: 0.122, blue: 0.157)
+            static let card = SwiftUI.Color(red: 0.157, green: 0.157, blue: 0.204)
+            static let textPrimary = SwiftUI.Color(red: 0.957, green: 0.957, blue: 0.969)
+            static let textSecondary = SwiftUI.Color(red: 0.659, green: 0.659, blue: 0.702)
+            static let border = SwiftUI.Color.white.opacity(0.06)
+            static let primary = SwiftUI.Color(red: 0.373, green: 0.451, blue: 0.941)
         }
     }
 
@@ -80,9 +80,9 @@ enum AppTheme {
 
     // MARK: - 阴影
     enum Shadow {
-        static let card = Color.black.opacity(0.04)
-        static let elevated = Color.black.opacity(0.08)
-        static let modal = Color.black.opacity(0.25)
+        static let card = SwiftUI.Color.black.opacity(0.04)
+        static let elevated = SwiftUI.Color.black.opacity(0.08)
+        static let modal = SwiftUI.Color.black.opacity(0.25)
     }
 }
 
@@ -192,7 +192,7 @@ struct TagView: View {
         switch style {
         case .primary: return AppTheme.Color.primary
         case .success: return AppTheme.Color.success
-        case .error: return AppTheme.Color.error
+        case .error:   return AppTheme.Color.error
         case .neutral: return AppTheme.Color.textSecondary
         }
     }
@@ -201,7 +201,7 @@ struct TagView: View {
         switch style {
         case .primary: return AppTheme.Color.primaryLight
         case .success: return AppTheme.Color.successLight
-        case .error: return AppTheme.Color.errorLight
+        case .error:   return AppTheme.Color.errorLight
         case .neutral: return AppTheme.Color.surface
         }
     }

@@ -77,7 +77,7 @@ struct ExtractorView: View {
                 // 进度条
                 if isLoading {
                     ProgressView(value: progress)
-                        .progressViewStyle(.linear(tint: AppTheme.Color.primary))
+                        .progressViewStyle(LinearProgressViewStyle(tint: AppTheme.Color.primary))
                         .padding(.horizontal, AppTheme.Spacing.lg)
                         .padding(.vertical, AppTheme.Spacing.xs)
                 }

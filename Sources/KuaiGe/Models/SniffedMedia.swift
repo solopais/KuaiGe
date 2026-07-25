@@ -44,7 +44,7 @@ struct SniffedMedia: Identifiable, Hashable {
         for segment in segments {
             let s = String(segment)
             let ext = extensionFromPath(s)
-            if !mediaExtensions.contains(ext) { continue }
+            if !SniffedMedia.mediaExtensions.contains(ext) { continue }
             // 找到了带 .mp3/.mp4 等的段——这就是真实文件名
             return decoded(s)
         }
@@ -66,7 +66,7 @@ struct SniffedMedia: Identifiable, Hashable {
         let pathOnly = url.split(separator: "?").first ?? ""
         let lastSegment = pathOnly.split(separator: "/").last ?? ""
         let ext = extensionFromPath(String(lastSegment))
-        return mediaExtensions.contains(ext) ? ext : (mediaType == .audio ? "mp3" : "mp4")
+        return SniffedMedia.mediaExtensions.contains(ext) ? ext : (mediaType == .audio ? "mp3" : "mp4")
     }
 
     /// 来源域名（用于副标题展示）
@@ -98,7 +98,7 @@ struct SniffedMedia: Identifiable, Hashable {
         return String(path[path.index(after: dotIndex)...]).lowercased()
     }
 
-    private func decode(_ s: String) -> String {
+    private func decoded(_ s: String) -> String {
         s.removingPercentEncoding ?? s
     }
 }
