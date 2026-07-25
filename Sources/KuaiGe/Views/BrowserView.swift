@@ -217,7 +217,7 @@ struct BrowserView: UIViewRepresentable {
                     }
                 } else if code >= 200 && code < 400 {
                     // 成功响应 → 清除错误状态
-                    if !parent.pageError!.isEmpty {
+                    if parent.pageError != nil && !parent.pageError!.isEmpty {
                         DispatchQueue.main.async { self.parent.pageError = nil }
                     }
                 }
