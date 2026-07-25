@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import UIKit
 
 /// 嗅探结果卡片（音频提取页 / 视频提取页 / 历史页 共用）
 /// 发行级极简风格：清晰层级、精致按钮、专业排版
@@ -9,8 +10,6 @@ struct SniffCard: View {
     @ObservedObject private var downloader = DownloadManager.shared
     @Binding var playingURL: String?
 
-    @State private var showShareSheet = false
-    @State private var shareItem: URL? = nil
     @State private var copied = false
 
     var body: some View {
@@ -38,11 +37,6 @@ struct SniffCard: View {
             RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
                 .stroke(AppTheme.Color.border, lineWidth: 0.5)
         )
-        .sheet(isPresented: $showShareSheet) {
-            if let url = shareItem {
-                ShareSheet(items: [url])
-            }
-        }
     }
 
     // MARK: - 头部：文件名 + 类型标签
@@ -185,8 +179,10 @@ struct SniffCard: View {
                     label: "分享",
                     tint: AppTheme.Color.success
                 ) {
-                    shareItem = URL(fileURLWithPath: path)
-                    showShareSheet = true
+                    // App 更新后沙盒容器路径会变，按文件名在当前下载目录重定位兜底
+                    let resolved = DownloadManager.shared.resolveLocalFile(path: path)
+                    guard let fileURL = resolved else { return }
+                    presentSystemShareSheet(fileURL: fileURL)
                 }
             }
         }
@@ -278,38 +274,30 @@ struct SniffCard: View {
     }
 }
 
-// MARK: - 系统分享面板封装（用容器 VC 解决 SwiftUI .sheet 白板问题）
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
+// MARK: - 系统分享：直接从顶层 UIViewController present（不走 SwiftUI .sheet，避免白板）
+/// SwiftUI 的 .sheet + if-let 状态在同一帧设置存在竞态，sheet 弹出时内容为空 → 白板。
+/// 纯 UIKit 路径 present UIActivityViewController，100% 稳定。
+func presentSystemShareSheet(fileURL: URL) {
+    guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }),
+          let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+    else { return }
 
-    func makeUIViewController(context: Context) -> some UIViewController {
-        let host = SharingHostController(items: items)
-        return host
+    // 找到最顶层正在展示的 VC（可能有升级弹窗等 sheet 叠着）
+    var top = root
+    while let presented = top.presentedViewController {
+        top = presented
     }
 
-    func updateUIViewController(_ vc: UIViewControllerType, context: Context) {}
-}
-
-/// 真正的容器 VC：viewDidLoad 内部 present UIActivityViewController
-/// （直接在 .sheet 里用 UIActivityViewController 会渲染白板，这是已知 SwiftUI bug）
-private final class SharingHostController: UIViewController {
-    let items: [Any]
-    init(items: [Any]) { self.items = items; super.init(nibName: nil, bundle: nil) }
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .clear
-
-        let avc = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        // iPad 兼容：必须设置 popover source，否则 crash
-        if let popover = avc.popoverPresentationController {
-            popover.sourceView = view
-            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = .any
-        }
-        present(avc, animated: true)
+    let avc = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+    // iPad 兼容：必须设置 popover source，否则 crash
+    if let popover = avc.popoverPresentationController {
+        popover.sourceView = top.view
+        popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+        popover.permittedArrowDirections = []
     }
+    top.present(avc, animated: true)
 }
 
 // MARK: - 内嵌播放器（音频 / 视频通用）

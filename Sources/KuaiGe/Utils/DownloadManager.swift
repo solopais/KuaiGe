@@ -80,10 +80,26 @@ final class DownloadManager: ObservableObject {
         wireDelegate()
     }
 
-    // MARK: - 是否已下载（本地文件仍存在）
+    // MARK: - 是否已下载（本地文件仍存在，含容器路径变化兜底）
     func isDownloaded(_ media: SniffedMedia) -> Bool {
         guard let path = media.downloadedLocalPath else { return false }
-        return FileManager.default.fileExists(atPath: path)
+        return resolveLocalFile(path: path) != nil
+    }
+
+    /// 把历史记录里存的绝对路径解析成当前有效的文件 URL。
+    /// App 更新后沙盒容器 UUID 会变，老的绝对路径失效——按文件名在当前下载目录重定位兜底。
+    func resolveLocalFile(path: String) -> URL? {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: path) {
+            return URL(fileURLWithPath: path)
+        }
+        // 兜底：取文件名，在当前容器的下载目录里找
+        let fileName = (path as NSString).lastPathComponent
+        let candidate = downloadsDir.appendingPathComponent(fileName)
+        if fm.fileExists(atPath: candidate.path) {
+            return candidate
+        }
+        return nil
     }
 
     /// 是否正在下载
