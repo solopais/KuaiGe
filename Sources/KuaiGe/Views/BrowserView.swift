@@ -118,8 +118,12 @@ struct BrowserView: UIViewRepresentable {
             parent.isLoading = false
             // 忽略取消错误（用户主动切换页面时会产生）
             if (error as NSError).code != NSURLErrorCancelled {
+                let msg = (error as NSError).localizedDescription
+                DispatchQueue.main.async {
+                    self.parent.pageError = "页面加载失败：\n\(msg)\n\n请检查网络连接，或前往系统「设置」确认已允许本 App 使用无线数据。"
+                }
                 #if DEBUG
-                print("[KuaiGe] 导航失败: \(error.localizedDescription)")
+                print("[KuaiGe] 导航失败: \(msg)")
                 #endif
             }
         }
@@ -127,8 +131,12 @@ struct BrowserView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             parent.isLoading = false
             if (error as NSError).code != NSURLErrorCancelled {
+                let msg = (error as NSError).localizedDescription
+                DispatchQueue.main.async {
+                    self.parent.pageError = "页面加载失败：\n\(msg)\n\n请检查网络连接，或前往系统「设置」确认已允许本 App 使用无线数据。"
+                }
                 #if DEBUG
-                print("[KuaiGe] 临时导航失败: \(error.localizedDescription)")
+                print("[KuaiGe] 临时导航失败: \(msg)")
                 #endif
             }
         }

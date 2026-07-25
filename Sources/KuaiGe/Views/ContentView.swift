@@ -83,6 +83,20 @@ struct ExtractorView: View {
                         .padding(.vertical, AppTheme.Spacing.xs)
                 }
 
+                // 当前加载地址（便于确认「粘贴是否生效 / WebView 是否在加载」）
+                if let url = loadURL {
+                    HStack(spacing: 4) {
+                        Image(systemName: "link")
+                            .font(.system(size: 10))
+                        Text(url.host ?? url.absoluteString)
+                            .lineLimit(1)
+                    }
+                    .font(AppTheme.Font.caption2())
+                    .foregroundColor(AppTheme.Color.textTertiary)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.bottom, AppTheme.Spacing.xs)
+                }
+
                 // 浏览器 + 结果列表（分屏布局）
                 GeometryReader { geo in
                     VStack(spacing: 0) {
