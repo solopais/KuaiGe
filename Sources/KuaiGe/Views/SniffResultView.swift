@@ -31,7 +31,7 @@ struct SniffResultView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完成") { dismiss() }
-                        .fontWeight(.medium)
+                        .font(.system(size: 17, weight: .medium))
                         .foregroundColor(KawaiiTheme.Color.sakuraPink)
                 }
             }

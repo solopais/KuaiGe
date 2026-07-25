@@ -153,8 +153,7 @@ struct SniffBrowserView: View {
                 Image(systemName: "music.note")
                     .font(.caption)
                 Text("已嗅探到 \(store.items.count) 条音频，点击查看 →")
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.system(size: 12, weight: .medium))
             }
             .foregroundColor(.white)
             .padding(.horizontal, 14)
