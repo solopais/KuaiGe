@@ -49,7 +49,7 @@ final class SniffMessageHandler: NSObject, WKScriptMessageHandler {
 
         let source = (dict["source"] as? String) ?? "unknown"
         let referer = (dict["referer"] as? String) ?? ""
-        let mediaTypeRaw = (dict["mediaType"] as?. String) ?? "other"
+        let mediaTypeRaw = (dict["mediaType"] as? String) ?? "other"
         let mediaType = MediaKind(rawValue: mediaTypeRaw) ?? .other
 
         store?.add(url: url, source: source, referer: referer, mediaType: mediaType)
