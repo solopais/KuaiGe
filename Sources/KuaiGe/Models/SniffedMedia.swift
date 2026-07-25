@@ -87,6 +87,11 @@ struct SniffedMedia: Identifiable, Hashable {
         case "source-attr":    return "属性拦截"
         case "blob-audio":     return "Blob 音频流"
         case "blob-video":     return "Blob 视频流"
+        case "dom-scan":       return "DOM 扫描"
+        case "performance-api": return "性能 API"
+        case "network-layer":  return "网络层拦截"
+        case "hls-segment":    return "HLS 分片"
+        case "hls-manifest":   return "HLS 清单"
         default:               return source
         }
     }
