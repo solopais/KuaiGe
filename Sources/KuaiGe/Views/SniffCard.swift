@@ -312,7 +312,7 @@ struct MediaPlayerView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("完成") { dismiss() }
-                            .fontWeight(.medium)
+                            .weightCompat(.medium)
                             .foregroundColor(AppTheme.Color.primary)
                     }
                 }

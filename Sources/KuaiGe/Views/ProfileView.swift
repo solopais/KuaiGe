@@ -10,7 +10,7 @@ struct ProfileView: View {
 
     var body: some View {
         ZStack {
-            NavigationStack {
+            AppNav {
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.xl) {
                         headerCard

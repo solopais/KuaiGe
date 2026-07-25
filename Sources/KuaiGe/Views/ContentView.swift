@@ -86,7 +86,7 @@ struct ExtractorView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        AppNav {
             VStack(spacing: 0) {
                 // 搜索栏风格的链接输入
                 searchBar
@@ -206,7 +206,7 @@ struct ExtractorView: View {
             Button { go() } label: {
                 Text("前往")
                     .font(AppTheme.Font.caption())
-                    .fontWeight(.semibold)
+                    .weightCompat(.semibold)
                     .foregroundColor(AppTheme.Color.textOnPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 7)

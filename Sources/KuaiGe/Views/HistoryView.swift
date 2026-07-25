@@ -11,7 +11,7 @@ struct HistoryView: View {
     @State private var exported = false
 
     var body: some View {
-        NavigationStack {
+        AppNav {
             Group {
                 if store.items.isEmpty {
                     emptyView
@@ -124,7 +124,7 @@ struct HistoryView: View {
             }
         }
         .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+        .hideScrollContentBackground()
     }
 
     // MARK: - 空状态
