@@ -61,8 +61,9 @@ struct BrowserView: UIViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .never
 
-        // 默认使用桌面 Chrome UA（桌面版反爬通常弱于移动端 API）
-        webView.customUserAgent = Self.desktopChromeUA
+        // 使用真实 iPhone Safari UA：移动端 WebView 用移动 UA 渲染最正常，
+        // 且与下方反指纹脚本（platform=iPhone 等）保持一致，避免 UA/指纹冲突触发风控拒绝
+        webView.customUserAgent = Self.mobileSafariUA
 
         context.coordinator.webView = webView
         webView.addObserver(context.coordinator, forKeyPath: "estimatedProgress", options: .new, context: nil)
@@ -80,7 +81,9 @@ struct BrowserView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         guard let url = loadURL else { return }
-        guard webView.url != url else { return }
+        // 用 coordinator 记录「主动加载过的 URL」，避免依赖 webView.url 在 load 调用后
+        // 立即变化而导致漏加载或重复加载
+        guard context.coordinator.lastLoadedURL != url else { return }
 
         var request = URLRequest(url: url)
         // 完整模拟桌面浏览器的请求头
@@ -90,11 +93,10 @@ struct BrowserView: UIViewRepresentable {
         request.setValue("document", forHTTPHeaderField: "Sec-Fetch-Dest")
         request.setValue("navigate", forHTTPHeaderField: "Sec-Fetch-Mode")
         request.setValue("none", forHTTPHeaderField: "Sec-Fetch-Site")
-        request.setValue("1", forHTTPHeaderField: "Sec-CH-UA-Mobile")
-        request.setValue("?0", forHTTPHeaderField: "Sec-CH-UA-Platform")
 
         isLoading = true
         pageError = nil
+        context.coordinator.lastLoadedURL = url
         webView.load(request)
     }
 
@@ -103,6 +105,8 @@ struct BrowserView: UIViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         let parent: BrowserView
         weak var webView: WKWebView?
+        /// 记录「主动 load 过的 URL」，用于 updateUIView 防重复/防漏加载判断
+        var lastLoadedURL: URL? = nil
 
         init(_ parent: BrowserView) {
             self.parent = parent
@@ -285,7 +289,7 @@ enum AntiDetectScript {
 
       // ===== 3. navigator.languages =====
       Object.defineProperty(navigator, 'languages', {
-        get: () => ['zh-CN', 'zh-Hans', 'zh', 'en-US', 'en'],
+        get: () => ['zh-CN', 'zh', 'en'],
         configurable: true
       });
 
@@ -297,15 +301,8 @@ enum AntiDetectScript {
       Object.defineProperty(navigator, 'vendor', { get: () => 'Apple Computer, Inc.', configurable: true });
 
       // ===== 5. window.chrome 对象 =====
-      // 很多检测脚本通过 !!window.chrome 判断是否为 Chrome
-      if (!window.chrome) {
-        window.chrome = {
-          runtime: {},
-          loadTimes: function() { return {}; },
-          csi: function() { return {}; },
-          app: { isInstalled: false, InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' } }
-        };
-      }
+      // 真实 iPhone Safari 没有 window.chrome 对象。UA 已统一为 iPhone Safari，
+      // 若在此伪造 window.chrome 反而与 UA 矛盾、更易被风控识别，故不设置。
 
       // ===== 6. Permissions API =====
       // 伪装 notifications 权限查询结果

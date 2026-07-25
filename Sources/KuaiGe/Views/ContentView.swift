@@ -219,8 +219,13 @@ struct ExtractorView: View {
     }
 
     private func go() {
-        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let u = URL(string: trimmed) else { return }
+        var trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        // 链接兜底：无 scheme 时自动补 https://，否则 URL(string:) 解析失败导致「没反应」
+        if !trimmed.hasPrefix("http://") && !trimmed.hasPrefix("https://") {
+            trimmed = "https://" + trimmed
+        }
+        guard let u = URL(string: trimmed) else { return }
         pageError = nil  // 重置错误状态
         loadURL = u
     }
