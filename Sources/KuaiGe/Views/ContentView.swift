@@ -63,6 +63,7 @@ struct ExtractorView: View {
     @State private var isLoading: Bool = false
     @State private var progress: Double = 0
     @State private var playingURL: String? = nil
+    @State private var pageError: String? = nil  // 页面加载错误（如 Access Denied）
 
     private var filtered: [SniffedMedia] {
         mode == .audio ? store.audioItems : store.videoItems
@@ -90,7 +91,8 @@ struct ExtractorView: View {
                             store: store,
                             loadURL: $loadURL,
                             isLoading: $isLoading,
-                            estimatedProgress: $progress
+                            estimatedProgress: $progress,
+                            pageError: $pageError
                         )
                         .frame(height: geo.size.height * (filtered.isEmpty ? 1.0 : 0.5))
 
@@ -126,9 +128,15 @@ struct ExtractorView: View {
             }
 
             // 覆盖层：空状态引导
-            if !isLoading && loadURL == nil && filtered.isEmpty {
+            if !isLoading && loadURL == nil && filtered.isEmpty && pageError == nil {
                 emptyGuide
                     .allowsHitTesting(false)
+            }
+
+            // 覆盖层：页面加载错误提示（Access Denied 等）
+            if let error = pageError, !isLoading {
+                errorOverlay(message: error)
+                    .allowsHitTesting(true)
             }
         }
     }
@@ -213,6 +221,50 @@ struct ExtractorView: View {
     private func go() {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let u = URL(string: trimmed) else { return }
+        pageError = nil  // 重置错误状态
         loadURL = u
+    }
+
+    // MARK: - 页面加载错误提示
+    private func errorOverlay(message: String) -> some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Spacer().frame(height: 60)
+
+            // 警告图标
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Color.errorLight)
+                    .frame(width: 72, height: 72)
+
+                Image(systemName: "shield.slash")
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundColor(AppTheme.Color.error)
+            }
+
+            VStack(spacing: AppTheme.Spacing.md) {
+                Text("该网站拒绝访问")
+                    .font(AppTheme.Font.title2())
+
+                Text(message)
+                    .font(AppTheme.Font.body())
+                    .foregroundColor(AppTheme.Color.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    Label("部分平台（抖音、TikTok 等）有强反爬保护", systemImage: "info.circle")
+                    Label("建议：在 Safari 浏览器打开链接，提取视频直链后粘贴到此处", systemImage: "arrow.right.circle")
+                    Label("或尝试其他可直接访问的音视频网站", systemImage: "globe")
+                }
+                .font(AppTheme.Font.caption())
+                .foregroundColor(AppTheme.Color.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(AppTheme.Color.surface)
+                .cornerRadius(AppTheme.Radius.md)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
     }
 }
