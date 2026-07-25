@@ -42,10 +42,12 @@ extension View {
     }
 
     /// .toolbarColorScheme(_:for:) 是 iOS 16+；iOS 15 下无此 API（导航栏配色由 UINavigationBarAppearance 控制），直接透传原 View。
+    /// 注意：不能把 NavigationBarPlacement 放进函数签名——该类型 iOS 16+ 才有，会让 iOS 15 编译报 cannot find type。
+    /// 改为内部硬编码 for: .navigationBar（调用处都只用于导航栏，等价）。
     @ViewBuilder
-    func compatibleToolbarColorScheme(_ scheme: ColorScheme, for bar: NavigationBarPlacement) -> some View {
+    func compatibleToolbarColorScheme(_ scheme: ColorScheme) -> some View {
         if #available(iOS 16.0, *) {
-            self.toolbarColorScheme(scheme, for: bar)
+            self.toolbarColorScheme(scheme, for: .navigationBar)
         } else {
             self
         }
