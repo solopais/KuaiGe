@@ -7,50 +7,53 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // ---- Tab 0: 音频资源提取 ----
             ExtractorView(mode: .audio, store: store)
                 .tabItem {
-                    Image(systemName: "music.note")
-                    Text("音频提取")
+                    Label("音频", systemImage: "waveform")
                 }
                 .tag(0)
 
-            // ---- Tab 1: 视频资源提取 ----
             ExtractorView(mode: .video, store: store)
                 .tabItem {
-                    Image(systemName: "film")
-                    Text("视频提取")
+                    Label("视频", systemImage: "film")
                 }
                 .tag(1)
 
-            // ---- Tab 2: 历史记录 ----
             HistoryView(store: store, downloader: downloader)
                 .tabItem {
-                    Image(systemName: "clock.fill")
-                    Text("历史")
+                    Label("历史", systemImage: "clock")
                 }
                 .tag(2)
         }
-        .tint(KawaiiTheme.Color.sakuraPink)
-        .onAppear {
-            // 外观配置
-            let appearance = UITabBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = UIColor(KawaiiTheme.Color.cardWhite)
-            UITabBar.appearance().standardAppearance = appearance
-            UITabBar.appearance().scrollEdgeAppearance = appearance
+        .tint(AppTheme.Color.primary)
+        .onAppear { applyGlobalAppearance() }
+    }
 
-            let navAppearance = UINavigationBarAppearance()
-            navAppearance.configureWithOpaqueBackground()
-            navAppearance.backgroundColor = UIColor(KawaiiTheme.Color.cream)
-            navAppearance.titleTextAttributes = [.foregroundColor: UIColor(KawaiiTheme.Color.textDark)]
-            UINavigationBar.appearance().standardAppearance = navAppearance
-            UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
-        }
+    private func applyGlobalAppearance() {
+        // TabBar
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithDefaultBackground()
+        tabAppearance.backgroundColor = UIColor(AppTheme.Color.surface)
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+
+        // NavigationBar
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+        navAppearance.backgroundColor = UIColor(AppTheme.Color.background)
+        navAppearance.titleTextAttributes = [
+            .foregroundColor: UIColor(AppTheme.Color.textPrimary),
+            .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
+        ]
+        navAppearance.largeTitleTextAttributes = [
+            .foregroundColor: UIColor(AppTheme.Color.textPrimary)
+        ]
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
     }
 }
 
-// MARK: - 提取页（音频 / 视频 共用）：链接栏 + 浏览器 + 内联结果
+// MARK: - 提取页（音频 / 视频 共用）
 struct ExtractorView: View {
     let mode: MediaKind
     @ObservedObject var store: SniffStore
@@ -66,43 +69,51 @@ struct ExtractorView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
-                // 链接栏（与浏览器同页，粘贴即加载，无需跳转重贴）
-                linkBar
+                // 搜索栏风格的链接输入
+                searchBar
 
-                Divider()
-
-                // 浏览器
-                BrowserView(
-                    store: store,
-                    loadURL: $loadURL,
-                    isLoading: $isLoading,
-                    estimatedProgress: $progress
-                )
-
+                // 进度条
                 if isLoading {
                     ProgressView(value: progress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: KawaiiTheme.Color.sakuraPink))
-                        .padding(.horizontal)
-                        .padding(.bottom, 4)
+                        .progressViewStyle(.linear(tint: AppTheme.Color.primary))
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+                        .padding(.vertical, AppTheme.Spacing.xs)
                 }
 
-                // 内联结果
-                if !filtered.isEmpty {
-                    resultsHeader
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(filtered) { item in
-                                SniffCard(item: item, store: store, playingURL: $playingURL)
+                // 浏览器 + 结果列表（分屏布局）
+                GeometryReader { geo in
+                    VStack(spacing: 0) {
+                        // 浏览器区域（占主要空间）
+                        BrowserView(
+                            store: store,
+                            loadURL: $loadURL,
+                            isLoading: $isLoading,
+                            estimatedProgress: $progress
+                        )
+                        .frame(height: geo.size.height * (filtered.isEmpty ? 1.0 : 0.5))
+
+                        // 结果列表（有数据时显示）
+                        if !filtered.isEmpty {
+                            Divider()
+
+                            ScrollView {
+                                LazyVStack(spacing: AppTheme.Spacing.md) {
+                                    ForEach(filtered) { item in
+                                        SniffCard(item: item, store: store, playingURL: $playingURL)
+                                    }
+                                }
+                                .padding(.horizontal, AppTheme.Spacing.lg)
+                                .padding(.vertical, AppTheme.Spacing.md)
                             }
+                            .frame(maxHeight: geo.size.height * 0.5)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
                     }
                 }
             }
-            .navigationTitle(mode == .audio ? "🎵 音频提取" : "🎬 视频提取")
+            .background(AppTheme.Color.background.ignoresSafeArea())
+            .navigationTitle(mode == .audio ? "音频提取" : "视频提取")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.light, for: .navigationBar)
             .sheet(isPresented: Binding(
@@ -113,68 +124,90 @@ struct ExtractorView: View {
                     MediaPlayerView(url: url)
                 }
             }
+
+            // 覆盖层：空状态引导
+            if !isLoading && loadURL == nil && filtered.isEmpty {
+                emptyGuide
+                    .allowsHitTesting(false)
+            }
         }
-        .navigationViewStyle(.stack)
     }
 
-    // MARK: 链接栏
-    private var linkBar: some View {
-        HStack(spacing: 8) {
-            TextField("粘贴链接…", text: $urlText)
-                .textFieldStyle(.roundedBorder)
+    // MARK: - 搜索栏
+    private var searchBar: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14))
+                .foregroundColor(AppTheme.Color.textTertiary)
+
+            TextField("粘贴网页链接，在此页直接加载", text: $urlText)
+                .textFieldStyle(.plain)
+                .font(AppTheme.Font.body())
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
                 .keyboardType(.URL)
+                .onSubmit { go() }
 
-            Button("粘贴") {
-                if let s = UIPasteboard.general.string {
-                    urlText = s
+            if !urlText.isEmpty {
+                Button { urlText = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(AppTheme.Color.textTertiary)
                 }
             }
-            .font(.system(size: 13, weight: .medium))
-            .foregroundColor(KawaiiTheme.Color.sakuraPink)
 
-            Button("前往") { go() }
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(KawaiiTheme.Color.sakuraPink)
-                .cornerRadius(KawaiiTheme.Radius.pill)
+            Button { go() } label: {
+                Text("前往")
+                    .font(AppTheme.Font.caption())
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.Color.textOnPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(AppTheme.Color.primary)
+                    .cornerRadius(AppTheme.Radius.sm)
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .background(KawaiiTheme.Color.cream)
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(AppTheme.Color.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.Radius.md)
+                .stroke(AppTheme.Color.borderStrong, lineWidth: 0.5)
+        )
+        .cornerRadius(AppTheme.Radius.md)
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.top, AppTheme.Spacing.sm)
+        .padding(.bottom, AppTheme.Spacing.xs)
     }
 
-    // MARK: 结果头部条
-    private var resultsHeader: some View {
-        HStack(spacing: 6) {
-            Image(systemName: mode == .audio ? "music.note" : "film")
-                .font(.caption)
-            Text("已嗅探到 \(filtered.count) 条\(mode == .audio ? "音频" : "视频")，点击播放或下载 →")
-                .font(.caption)
-                .fontWeight(.medium)
+    // MARK: - 空状态引导
+    private var emptyGuide: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Spacer().frame(height: 80)
+
+            // 图标
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Color.primaryLight)
+                    .frame(width: 72, height: 72)
+
+                Image(systemName: mode == .audio ? "waveform" : "film")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundColor(AppTheme.Color.primary)
+            }
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text(mode == .audio ? "提取页面中的音频" : "提取页面中的视频")
+                    .font(AppTheme.Font.title2())
+
+                Text("粘贴包含音视频的网页链接，\n自动嗅探并获取直链")
+                    .font(AppTheme.Font.body())
+                    .foregroundColor(AppTheme.Color.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
             Spacer()
-            Button("清空") { withAnimation { store.clear() } }
-                .font(.caption)
-                .foregroundColor(KawaiiTheme.Color.coral)
         }
-        .foregroundColor(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            LinearGradient(
-                colors: [KawaiiTheme.Color.sakuraPink, KawaiiTheme.Color.coral],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
-        .cornerRadius(KawaiiTheme.Radius.pill)
-        .padding(.horizontal)
-        .padding(.bottom, 6)
-        .animation(.spring(response: 0.3), value: filtered.count)
     }
 
     private func go() {

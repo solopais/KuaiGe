@@ -2,7 +2,7 @@ import SwiftUI
 import AVKit
 
 /// 嗅探结果卡片（音频提取页 / 视频提取页 / 历史页 共用）
-/// 提供：复制直链、播放（内嵌播放器）、下载、分享、下载状态展示
+/// 发行级极简风格：清晰层级、精致按钮、专业排版
 struct SniffCard: View {
     let item: SniffedMedia
     @ObservedObject var store: SniffStore
@@ -10,90 +10,33 @@ struct SniffCard: View {
 
     @State private var showShareSheet = false
     @State private var shareItem: URL? = nil
+    @State private var copied = false
 
     var body: some View {
-        KawaiiCard(padding: 14) {
-            VStack(alignment: .leading, spacing: 10) {
-                // 顶部：文件名 + 来源标签
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.fileName)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(KawaiiTheme.Color.textDark)
-                            .lineLimit(2)
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            // ---- 第一行：文件名 + 类型标签 ----
+            headerRow
 
-                        Text(sourceLabel(item.source))
-                            .font(.caption2)
-                            .foregroundColor(KawaiiTheme.Color.textLight.opacity(0.8))
-                    }
+            // ---- 域名 + 来源 ----
+            subtitleRow
 
-                    Spacer()
+            // ---- URL 直链（等宽字体，可复制） ----
+            urlBar
 
-                    KawaiiTag(text: sourceTag(item.source), color: tagColor(item.source))
-                }
+            // ---- 操作按钮组 ----
+            actionRow
 
-                // URL（可折叠直链）
-                Text(item.url)
-                    .font(.caption)
-                    .foregroundColor(KawaiiTheme.Color.textLight.opacity(0.6))
-                    .lineLimit(2)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(KawaiiTheme.Color.cream)
-                    .cornerRadius(KawaiiTheme.Radius.small)
-
-                // 操作按钮行
-                HStack(spacing: 10) {
-                    actionButton(
-                        icon: "doc.on.doc",
-                        label: "复制",
-                        color: KawaiiTheme.Color.skyBlue
-                    ) {
-                        UIPasteboard.general.string = item.url
-                    }
-
-                    actionButton(
-                        icon: playingURL == item.url ? "pause.circle.fill" : "play.circle.fill",
-                        label: playingURL == item.url ? "暂停" : "播放",
-                        color: KawaiiTheme.Color.sakuraPink
-                    ) {
-                        playingURL = (playingURL == item.url) ? nil : item.url
-                    }
-
-                    actionButton(
-                        icon: "arrow.down.circle.fill",
-                        label: "下载",
-                        color: KawaiiTheme.Color.mint
-                    ) {
-                        DownloadManager.shared.download(item, store: store) { _ in }
-                    }
-
-                    if let path = item.downloadedLocalPath {
-                        actionButton(
-                            icon: "square.and.arrow.up",
-                            label: "分享",
-                            color: KawaiiTheme.Color.lavender
-                        ) {
-                            shareItem = URL(fileURLWithPath: path)
-                            showShareSheet = true
-                        }
-                    }
-                }
-
-                // 下载状态
-                if let st = DownloadManager.shared.status[item.url] {
-                    HStack(spacing: 4) {
-                        Image(systemName: st.contains("失败") || st.contains("无效") ? "xmark.circle" :
-                              st.contains("已保存") ? "checkmark.circle" : "arrow.triangle.2.circlepath")
-                            .font(.caption2)
-                        Text(st)
-                            .font(.caption2)
-                    }
-                    .foregroundColor(statusColor(st))
-                    .padding(.top, 2)
-                }
-            }
+            // ---- 下载状态 ----
+            statusRow
         }
+        .padding(AppTheme.Spacing.lg)
+        .background(AppTheme.Color.card)
+        .cornerRadius(AppTheme.Radius.lg)
+        .shadow(color: AppTheme.Shadow.card, radius: 6, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
+                .stroke(AppTheme.Color.border, lineWidth: 0.5)
+        )
         .sheet(isPresented: $showShareSheet) {
             if let url = shareItem {
                 ShareSheet(items: [url])
@@ -101,59 +44,181 @@ struct SniffCard: View {
         }
     }
 
-    // MARK: - 操作按钮组件
-    private func actionButton(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 13))
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
+    // MARK: - 头部：文件名 + 类型标签
+    private var headerRow: some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            // 媒体类型图标
+            Image(systemName: item.mediaType == .audio ? "waveform" : "video.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(AppTheme.Color.primary)
+                .frame(width: 28, height: 28)
+                .background(AppTheme.Color.primaryLight)
+                .cornerRadius(AppTheme.Radius.sm)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.fileName)
+                    .font(AppTheme.Font.title2())
+                    .foregroundColor(AppTheme.Color.textPrimary)
+                    .lineLimit(2)
+
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    TagView(text: item.mediaType == .audio ? "音频" : "视频",
+                            style: item.mediaType == .audio ? .primary : .success)
+                }
             }
-            .foregroundColor(color)
-            .padding(.horizontal, 10)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - 副标题：域名 + 来源
+    private var subtitleRow: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            if !item.displayDomain.isEmpty {
+                Image(systemName: "globe")
+                    .font(.system(size: 10))
+                    .foregroundColor(AppTheme.Color.textTertiary)
+                Text(item.displayDomain)
+                    .font(AppTheme.Font.caption2())
+                    .foregroundColor(AppTheme.Color.textTertiary)
+                    .lineLimit(1)
+            }
+
+            Text("·")
+                .foregroundColor(AppTheme.Color.textTertiary)
+
+            Text(item.sourceLabel)
+                .font(AppTheme.Font.caption2())
+                .foregroundColor(AppTheme.Color.textTertiary)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - URL 栏（点击可复制）
+    private var urlBar: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 11))
+                .foregroundColor(copied ? AppTheme.Color.success : AppTheme.Color.textTertiary)
+
+            Text(truncateURL(item.url, maxChars: 60))
+                .font(AppTheme.Font.mono(11))
+                .foregroundColor(AppTheme.Color.textSecondary)
+                .lineLimit(1)
+
+            Spacer()
+
+            Button { copyURL() } label: {
+                Text(copied ? "已复制" : "复制")
+                    .font(AppTheme.Font.caption())
+                    .foregroundColor(copied ? AppTheme.Color.success : AppTheme.Color.primary)
+            }
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(AppTheme.Color.surface)
+        .cornerRadius(AppTheme.Radius.sm)
+        .onTapGesture { copyURL() }
+    }
+
+    // MARK: - 操作按钮行
+    private var actionRow: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            // 播放 / 暂停
+            compactAction(
+                icon: playingURL == item.url ? "pause.fill" : "play.fill",
+                label: playingURL == item.url ? "暂停" : "播放",
+                tint: AppTheme.Color.primary
+            ) {
+                playingURL = (playingURL == item.url) ? nil : item.url
+            }
+
+            // 下载
+            compactAction(
+                icon: "arrow.down.to.line",
+                label: "下载",
+                tint: AppTheme.Color.textSecondary
+            ) {
+                DownloadManager.shared.download(item, store: store) { _ in }
+            }
+
+            Spacer()
+
+            // 分享（仅已下载时显示）
+            if let path = item.downloadedLocalPath {
+                compactAction(
+                    icon: "square.and.arrow.up",
+                    label: "分享",
+                    tint: AppTheme.Color.success
+                ) {
+                    shareItem = URL(fileURLWithPath: path)
+                    showShareSheet = true
+                }
+            }
+        }
+    }
+
+    // MARK: - 下载状态
+    private var statusRow: some View {
+        Group {
+            if let st = DownloadManager.shared.status[item.url] {
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Image(systemName: statusIcon(st))
+                        .font(.system(size: 11))
+                    Text(st)
+                        .font(AppTheme.Font.caption2())
+                }
+                .foregroundColor(statusColor(st))
+                .padding(.top, AppTheme.Spacing.xs)
+            }
+        }
+    }
+
+    // MARK: - 紧凑操作按钮
+    private func compactAction(icon: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(label)
+                    .font(AppTheme.Font.caption())
+            }
+            .foregroundColor(tint)
+            .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(color.opacity(0.12))
-            .cornerRadius(KawaiiTheme.Radius.pill)
+            .background(tint.opacity(0.08))
+            .cornerRadius(AppTheme.Radius.sm)
         }
     }
 
-    // MARK: - 辅助方法
-    private func sourceLabel(_ source: String) -> String {
-        switch source {
-        case "media-src": return "媒体元素 src"
-        case "fetch": return "Fetch 请求"
-        case "fetch-resp": return "Fetch 响应（媒体）"
-        case "xhr": return "XHR 请求"
-        case "media-element-scan": return "页面扫描发现"
-        case "nested-source": return "嵌套 <source>"
-        case "source-attr": return "属性赋值拦截"
-        case "blob-audio": return "Blob 音频流"
-        case "blob-video": return "Blob 视频流"
-        default: return source
+    // MARK: - 工具方法
+    private func copyURL() {
+        UIPasteboard.general.string = item.url
+        withAnimation(.easeInOut(duration: 0.15)) {
+            copied = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 0.15)) { copied = false }
         }
     }
 
-    private func sourceTag(_ source: String) -> String {
-        if source.contains("blob") { return "Blob" }
-        if source.contains("media") { return "媒体" }
-        if source.contains("fetch") { return "Fetch" }
-        if source.contains("xhr") { return "XHR" }
-        return "其他"
+    private func truncateURL(_ url: String, maxChars: Int) -> String {
+        guard url.count > maxChars else { return url }
+        return String(url.prefix(maxChars / 2)) + "…" + String(url.suffix(maxChars / 4))
     }
 
-    private func tagColor(_ source: String) -> Color {
-        if source.contains("blob") { return KawaiiTheme.Color.mint.opacity(0.4) }
-        if source.contains("media") { return KawaiiTheme.Color.sakuraPink.opacity(0.15) }
-        if source.contains("fetch") { return KawaiiTheme.Color.skyBlue.opacity(0.2) }
-        if source.contains("xhr") { return KawaiiTheme.Color.lavender }
-        return KawaiiTheme.Color.cream
+    private func statusIcon(_ st: String) -> String {
+        if st.contains("失败") || st.contains("无效") || st.contains("错误") { return "xmark.circle.fill" }
+        if st.contains("已保存") { return "checkmark.circle.fill" }
+        if st.contains("下载中") { return "arrow.triangle.2.circlepath" }
+        return "info.circle"
     }
 
-    private func statusColor(_ status: String) -> Color {
-        if status.contains("失败") || status.contains("无效") { return KawaiiTheme.Color.coral }
-        if status.contains("已保存") { return KawaiiTheme.Color.mint }
-        return KawaiiTheme.Color.textLight
+    private func statusColor(_ st: String) -> Color {
+        if st.contains("失败") || st.contains("无效") || st.contains("错误") { return AppTheme.Color.error }
+        if st.contains("已保存") { return AppTheme.Color.success }
+        return AppTheme.Color.textTertiary
     }
 }
 
@@ -171,9 +236,19 @@ struct ShareSheet: UIViewControllerRepresentable {
 // MARK: - 内嵌播放器（音频 / 视频通用）
 struct MediaPlayerView: View {
     let url: URL
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        VideoPlayer(player: AVPlayer(url: url))
-            .edgesIgnoringSafeArea(.all)
+        NavigationView {
+            VideoPlayer(player: AVPlayer(url: url))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("完成") { dismiss() }
+                            .fontWeight(.medium)
+                            .foregroundColor(AppTheme.Color.primary)
+                    }
+                }
+        }
     }
 }
