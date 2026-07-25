@@ -3,6 +3,7 @@ import Combine
 
 /// 把嗅探到的音频下载到 App 沙盒 Documents/Downloads，供「分享到文件」使用
 final class DownloadManager: ObservableObject {
+    static let shared = DownloadManager()
     /// url -> 状态文案
     @Published var status: [String: String] = [:]
 
