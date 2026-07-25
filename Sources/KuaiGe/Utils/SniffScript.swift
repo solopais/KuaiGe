@@ -16,6 +16,7 @@ enum SniffScript {
     (function(){
       if (window.__kgSniffInstalled) return;
       window.__kgSniffInstalled = true;
+      console.log('[KuaiGe] 嗅探引擎已启动');
 
       // ========== 工具函数 ==========
       var reported = Object.create(null);       // 去重：已报告的 URL
@@ -38,10 +39,8 @@ enum SniffScript {
 
       function isNonMediaExt(u) { return NON_MEDIA_SET[extOf(u)] === 1; }
 
-      // 真媒体扩展名
-      var MEDIA_EXT_RE = /^(mp3|m4a|aac|wav|flac|ogg|opus|wma|ape|amr|aiff|au|ra|
-                                mp4|webm|mkv|avi|mov|ts|m3u8|m3u|f4m|mpd|ogg|ogv|
-                                x-m4a|x-flac|x-wav|x-aiff|x-ms-wma)$/;
+      // 真媒体扩展名（正则必须在单行内，JS 不允许 /.../ 字面量含换行）
+      var MEDIA_EXT_RE = /^(mp3|m4a|aac|wav|flac|ogg|opus|wma|ape|amr|aiff|au|ra|mp4|webm|mkv|avi|mov|ts|m3u8|m3u|f4m|mpd|ogv|x-m4a|x-flac|x-wav|x-aiff|x-ms-wma)$/;
 
       function isMediaExt(u) {
         var e = extOf(u);
@@ -201,6 +200,13 @@ enum SniffScript {
                 if (mt !== 'other' && reqUrl) {
                   report(reqUrl, 'fetch-resp', ref, mt);
                 }
+                // 检测 m3u8/HLS 响应体内容（克隆响应避免消费原始 body）
+                if (ct.indexOf('mpegurl') !== -1 || ct.indexOf('m3u8') !== -1 ||
+                    ct.indexOf('text/plain') !== -1 || ct === '' || ct.indexOf('octet-stream') !== -1) {
+                  resp.clone().text().then(function(text) {
+                    detectM3U8Content(text, reqUrl);
+                  }).catch(function(){});
+                }
               }
             } catch(e) {}
             return resp;
@@ -230,6 +236,11 @@ enum SniffScript {
                 if (isLikelyMedia(u) || mt !== 'other') {
                   report(u, 'xhr-resp', getRef(), mt !== 'other' ? mt : typeFromExt(u));
                 }
+                // 检测 XHR 响应体是否为 m3u8/HLS 清单
+                try {
+                  var text = self.responseText;
+                  if (text && typeof text === 'string') detectM3U8Content(text, u);
+                } catch(e) {}
               }
             } catch(e) {}
           });
@@ -354,13 +365,6 @@ enum SniffScript {
           }
         } catch(e) {}
       }
-
-      // Hook XHR 的 responseText 来检测 m3u8
-      try {
-        var _origRespDesc = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'responseText');
-        // responseText 通常没有 setter，改用 getter 包装方式不可行
-        // 改用 readystatechange 中检测
-      } catch(e) {}
 
       // ========== 9) MediaSource API 拦截（高级流媒体）==========
       try {
