@@ -1,6 +1,6 @@
 name: KuaiGe
 options:
-  bundleIdPrefix: com.kuaige
+  bundleIdPrefix: com.mvextractor
   deploymentTarget:
     iOS: "16.0"
   xcodeVersion: "15.0"
@@ -23,7 +23,7 @@ targets:
       - Sources/KuaiGe
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kuaige.sniffer
+        PRODUCT_BUNDLE_IDENTIFIER: com.mvextractor.app
         PRODUCT_NAME: KuaiGe
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: KuaiGe.entitlements
