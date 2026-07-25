@@ -1,6 +1,5 @@
 import Foundation
 import CryptoKit
-import Security
 import UIKit
 
 /// 离线授权管理器（专业版激活码）
@@ -21,8 +20,6 @@ final class LicenseManager: ObservableObject {
     /// 内嵌公钥（原始 32 字节 base64）。切勿替换为他人密钥，否则激活体系失控。
     private let publicKeyB64 = "lEl3eKv2Yr/Gz7ilOtTnLrHirfAr176T0vh8hNQIHuI="
 
-    private let service = "com.mvextractor.app.license"
-
     // MARK: - 激活码载荷
     struct LicensePayload: Codable {
         var v: Int = 1
@@ -34,12 +31,12 @@ final class LicenseManager: ObservableObject {
 
     init() { restore() }
 
-    // MARK: - 设备指纹（Keychain 持久 UUID，重装不丢）
+    // MARK: - 设备指纹（本地持久 UUID；重启不丢，卸载清零）
     var deviceId: String {
-        if let existing = readKeychain(key: "deviceId") { return existing }
+        if let existing = readLocal(key: "deviceId") { return existing }
         let newId = UIDevice.current.identifierForVendor?.uuidString
             ?? UUID().uuidString
-        _ = saveKeychain(key: "deviceId", value: newId)
+        _ = saveLocal(key: "deviceId", value: newId)
         return newId
     }
 
@@ -64,8 +61,8 @@ final class LicenseManager: ObservableObject {
             errorMessage = "激活码已绑定到其他设备"
             return false
         }
-        _ = saveKeychain(key: "licenseCode", value: trimmed)
-        _ = saveKeychain(key: "licenseDev", value: deviceId)
+        _ = saveLocal(key: "licenseCode", value: trimmed)
+        _ = saveLocal(key: "licenseDev", value: deviceId)
         isPro = true
         licenseInfo = payload
         errorMessage = nil
@@ -74,8 +71,8 @@ final class LicenseManager: ObservableObject {
 
     // MARK: - 启动时恢复
     func restore() {
-        guard let code = readKeychain(key: "licenseCode"),
-              let boundDev = readKeychain(key: "licenseDev") else {
+        guard let code = readLocal(key: "licenseCode"),
+              let boundDev = readLocal(key: "licenseDev") else {
             isPro = false
             return
         }
@@ -96,8 +93,8 @@ final class LicenseManager: ObservableObject {
     }
 
     func deactivate() {
-        _ = deleteKeychain(key: "licenseCode")
-        _ = deleteKeychain(key: "licenseDev")
+        _ = deleteLocal(key: "licenseCode")
+        _ = deleteLocal(key: "licenseDev")
         isPro = false
         licenseInfo = nil
         errorMessage = nil
@@ -126,40 +123,20 @@ final class LicenseManager: ObservableObject {
         return payload
     }
 
-    // MARK: - Keychain 封装
-    private func saveKeychain(key: String, value: String) -> Bool {
-        let data = Data(value.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-        SecItemDelete(query as CFDictionary)
-        return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+    // MARK: - 本地持久化（UserDefaults）
+    // 说明：激活信息写入 UserDefaults（沙盒 plist），重启 App 不丢失；卸载 App 时随沙盒清空（符合「不卸载即永久」）。
+    // 此前用 Keychain，但在 TrollStore / ad-hoc 自签环境下 SecItemAdd 可能静默失败，导致重启后激活丢失，故改用 UserDefaults。
+    private func saveLocal(key: String, value: String) -> Bool {
+        UserDefaults.standard.set(value, forKey: "mvextractor.license.\(key)")
+        return true
     }
 
-    private func readKeychain(key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+    private func readLocal(key: String) -> String? {
+        UserDefaults.standard.string(forKey: "mvextractor.license.\(key)")
     }
 
-    private func deleteKeychain(key: String) -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key
-        ]
-        return SecItemDelete(query as CFDictionary) == errSecSuccess
+    private func deleteLocal(key: String) -> Bool {
+        UserDefaults.standard.removeObject(forKey: "mvextractor.license.\(key)")
+        return true
     }
 }
