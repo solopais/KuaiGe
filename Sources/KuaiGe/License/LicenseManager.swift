@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import Security
+import UIKit
 
 /// 离线授权管理器（专业版激活码）
 ///
