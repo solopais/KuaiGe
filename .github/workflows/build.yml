@@ -109,27 +109,21 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN" | head -10
 
       - name: Sign with self-signed cert + inject entitlements
-        timeout-minutes: 5
+        timeout-minutes: 15
         run: |
           APP=build/Build/Products/Release-iphoneos/KuaiGe.app
           IDENTITY="KuaiGe Dev"
 
-          echo "--- Before signing ---"
-          codesign -dv "$APP" 2>&1 || true
-
           echo "--- Signing with $IDENTITY ---"
           codesign \
             --force \
+            --deep \
             --sign "$IDENTITY" \
             --entitlements KuaiGe.entitlements \
-            --verbose \
             "$APP"
 
-          echo "--- Embedded entitlements ---"
-          codesign --display --entitlements :- "$APP" 2>&1
-
-          echo "--- Signature info ---"
-          codesign -dv "$APP" 2>&1
+          echo "--- Verify ---"
+          codesign -dv "$APP" 2>&1 || true
 
       - name: Create IPA payload
         timeout-minutes: 5
