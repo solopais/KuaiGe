@@ -93,7 +93,7 @@ struct SniffBrowserView: View {
 
                 if isLoading {
                     ProgressView(value: progress)
-                        .progressViewStyle(.linear(tint: KawaiiTheme.Color.sakuraPink))
+                        .progressViewStyle(LinearProgressViewStyle(tint: KawaiiTheme.Color.sakuraPink))
                         .padding(.horizontal)
                         .padding(.bottom, 4)
                 }

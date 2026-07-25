@@ -7,34 +7,34 @@ enum KawaiiTheme {
     // MARK: 配色
     enum Color {
         /// 樱花粉 — 主色（按钮、Tab 选中、强调）
-        static let sakuraPink = Color(red: 1.0, green: 0.718, blue: 0.773)
+        static let sakuraPink = SwiftUI.Color(red: 1.0, green: 0.718, blue: 0.773)
         /// 薰衣草紫 — 次要色
-        static let lavender = Color(red: 0.902, green: 0.902, blue: 0.98)
+        static let lavender = SwiftUI.Color(red: 0.902, green: 0.902, blue: 0.98)
         /// 薄荷绿 — 成功/下载完成
-        static let mint = Color(red: 0.71, green: 0.918, blue: 0.843)
+        static let mint = SwiftUI.Color(red: 0.71, green: 0.918, blue: 0.843)
         /// 奶油底色
-        static let cream = Color(red: 1.0, green: 0.973, blue: 0.906)
+        static let cream = SwiftUI.Color(red: 1.0, green: 0.973, blue: 0.906)
         /// 文字深棕
-        static let textDark = Color(red: 0.282, green: 0.216, blue: 0.157)
+        static let textDark = SwiftUI.Color(red: 0.282, green: 0.216, blue: 0.157)
         /// 文字浅灰
-        static let textLight = Color(red: 0.55, green: 0.5, blue: 0.45)
+        static let textLight = SwiftUI.Color(red: 0.55, green: 0.5, blue: 0.45)
         /// 珊瑚橙 — CTA 按钮
-        static let coral = Color(red: 1.0, green: 0.435, blue: 0.38)
+        static let coral = SwiftUI.Color(red: 1.0, green: 0.435, blue: 0.38)
         /// 天空蓝 — 链接/信息
-        static let skyBlue = Color(red: 0.529, green: 0.808, blue: 0.922)
+        static let skyBlue = SwiftUI.Color(red: 0.529, green: 0.808, blue: 0.922)
         /// 卡片白
-        static let cardWhite = Color.white
+        static let cardWhite = SwiftUI.Color.white
         /// 分割线
-        static let divider = Color.black.opacity(0.06)
+        static let divider = SwiftUI.Color.black.opacity(0.06)
 
         // 暗色模式对应
         enum Dark {
-            static let background = Color(red: 0.14, green: 0.12, blue: 0.18)
-            static let card = Color(red: 0.2, green: 0.18, blue: 0.26)
-            static let text = Color(red: 0.92, green: 0.9, blue: 0.88)
-            static let textSecondary = Color(red: 0.65, green: 0.62, blue: 0.68)
-            static let sakuraPink = Color(red: 0.9, green: 0.5, blue: 0.6)
-            static let mint = Color(red: 0.4, green: 0.75, blue: 0.6)
+            static let background = SwiftUI.Color(red: 0.14, green: 0.12, blue: 0.18)
+            static let card = SwiftUI.Color(red: 0.2, green: 0.18, blue: 0.26)
+            static let text = SwiftUI.Color(red: 0.92, green: 0.9, blue: 0.88)
+            static let textSecondary = SwiftUI.Color(red: 0.65, green: 0.62, blue: 0.68)
+            static let sakuraPink = SwiftUI.Color(red: 0.9, green: 0.5, blue: 0.6)
+            static let mint = SwiftUI.Color(red: 0.4, green: 0.75, blue: 0.6)
         }
     }
 
@@ -48,9 +48,9 @@ enum KawaiiTheme {
 
     // MARK: 阴影
     struct Shadow {
-        static let card = Color.black.opacity(0.06)
-        static let button = Color.sakuraPink.opacity(0.3)
-        static let floating = Color.black.opacity(0.12)
+        static let card = SwiftUI.Color.black.opacity(0.06)
+        static let button = KawaiiTheme.Color.sakuraPink.opacity(0.3)
+        static let floating = SwiftUI.Color.black.opacity(0.12)
     }
 }
 
