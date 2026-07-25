@@ -111,7 +111,7 @@ struct UpgradeView: View {
 
             HStack(spacing: AppTheme.Spacing.lg) {
                 contactChip(icon: "number", label: "QQ", value: "2260354231")
-                contactChip(icon: "message.fill", label: "微信", value: "ponboor")
+                contactChip(icon: "number", label: "微信", value: "ponboor")
             }
 
             Divider().background(AppTheme.Color.divider)

@@ -72,6 +72,7 @@ struct ContentView: View {
 struct ExtractorView: View {
     let mode: MediaKind
     @ObservedObject var store: SniffStore
+    @ObservedObject private var license = LicenseManager.shared
 
     @State private var urlText: String = ""
     @State private var loadURL: URL? = nil
@@ -98,8 +99,8 @@ struct ExtractorView: View {
                         .padding(.vertical, AppTheme.Spacing.xs)
                 }
 
-                // 专业版锁定横幅（免费版显示，点按前往也会拦截）
-                if !LicenseManager.shared.isPro {
+                // 专业版锁定横幅（免费版显示，激活后实时消失）
+                if !license.isPro {
                     proLockBanner
                 }
 

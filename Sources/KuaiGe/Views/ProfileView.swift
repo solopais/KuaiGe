@@ -195,7 +195,7 @@ struct ProfileView: View {
 
             contactRow(icon: "number", label: "QQ", value: "2260354231")
             Divider().background(AppTheme.Color.divider)
-            contactRow(icon: "message.fill", label: "微信", value: "ponboor")
+            contactRow(icon: "number", label: "微信", value: "ponboor")
             Divider().background(AppTheme.Color.divider)
             Button {
                 if let url = URL(string: "https://www.goofish.com/personal?userId=2901672735") {
