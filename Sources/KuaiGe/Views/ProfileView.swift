@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// 我的：专业版激活 + 购买联系
 struct ProfileView: View {
@@ -38,9 +39,13 @@ struct ProfileView: View {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.md)
                     .fill(AppTheme.Color.primary)
                     .frame(width: 52, height: 52)
-                Image(systemName: "waveform.badge.plus")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(AppTheme.Color.textOnPrimary)
+                Image("AppLogo")
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.medium)
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
             }
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
@@ -75,7 +80,7 @@ struct ProfileView: View {
                     .foregroundColor(AppTheme.Color.textPrimary)
             }
 
-            Text("输入激活码即可免费使用全部功能（离线验证，无需联网）")
+            Text("输入激活码即可免费使用全部功能")
                 .font(AppTheme.Font.caption())
                 .foregroundColor(AppTheme.Color.textSecondary)
 
@@ -193,6 +198,30 @@ struct ProfileView: View {
             contactRow(icon: "number", label: "QQ", value: "2260354231")
             Divider().background(AppTheme.Color.divider)
             contactRow(icon: "message.fill", label: "微信", value: "ponboor")
+            Divider().background(AppTheme.Color.divider)
+            Button {
+                if let url = URL(string: "https://www.goofish.com/personal?userId=2901672735") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: "bag.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppTheme.Color.primary)
+                        .frame(width: 18)
+                    Text("闲鱼店铺")
+                        .font(AppTheme.Font.caption())
+                        .foregroundColor(AppTheme.Color.textSecondary)
+                        .frame(width: 60, alignment: .leading)
+                    Text("点击前往店铺")
+                        .font(AppTheme.Font.bodyMedium())
+                        .foregroundColor(AppTheme.Color.primary)
+                    Spacer()
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppTheme.Color.textTertiary)
+                }
+            }
         }
         .padding(AppTheme.Spacing.lg)
         .background(AppTheme.Color.card)
