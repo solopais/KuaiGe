@@ -6,6 +6,7 @@ import AVKit
 struct SniffCard: View {
     let item: SniffedMedia
     @ObservedObject var store: SniffStore
+    @ObservedObject private var downloader = DownloadManager.shared
     @Binding var playingURL: String?
 
     @State private var showShareSheet = false
@@ -130,6 +131,9 @@ struct SniffCard: View {
     }
 
     // MARK: - 操作按钮行
+    private var isDownloading: Bool { downloader.isDownloading(item.url) }
+    private var isDownloaded: Bool { downloader.isDownloaded(item) }
+
     private var actionRow: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
             // 播放 / 暂停
@@ -145,23 +149,37 @@ struct SniffCard: View {
                 playingURL = (playingURL == item.url) ? nil : item.url
             }
 
-            // 下载
-            compactAction(
-                icon: "arrow.down.to.line",
-                label: "下载",
-                tint: AppTheme.Color.textSecondary
-            ) {
-                guard LicenseManager.shared.isPro else {
-                    NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
-                    return
+            // 下载 / 下载中 / 已下载（三态，避免重复下载）
+            if isDownloaded {
+                compactAction(
+                    icon: "checkmark.circle.fill",
+                    label: "已下载",
+                    tint: AppTheme.Color.success
+                ) { /* 已下载，不再触发下载 */ }
+            } else if isDownloading {
+                compactAction(
+                    icon: "arrow.down.circle",
+                    label: "下载中",
+                    tint: AppTheme.Color.textTertiary
+                ) { /* 下载中，忽略点击 */ }
+            } else {
+                compactAction(
+                    icon: "arrow.down.to.line",
+                    label: "下载",
+                    tint: AppTheme.Color.textSecondary
+                ) {
+                    guard LicenseManager.shared.isPro else {
+                        NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+                        return
+                    }
+                    downloader.download(item, store: store) { _ in }
                 }
-                DownloadManager.shared.download(item, store: store) { _ in }
             }
 
             Spacer()
 
-            // 分享（仅已下载时显示）
-            if let path = item.downloadedLocalPath {
+            // 分享（已下载时显示）→ 拉起系统分享面板（存到文件/分享到其他 App）
+            if let path = item.downloadedLocalPath, downloader.isDownloaded(item) {
                 compactAction(
                     icon: "square.and.arrow.up",
                     label: "分享",
@@ -174,10 +192,27 @@ struct SniffCard: View {
         }
     }
 
-    // MARK: - 下载状态
+    // MARK: - 下载状态（含进度条）
     private var statusRow: some View {
         Group {
-            if let st = DownloadManager.shared.status[item.url] {
+            if let prog = downloader.progress[item.url] {
+                // 下载中：进度条 + 百分比
+                VStack(alignment: .leading, spacing: 5) {
+                    ProgressView(value: prog)
+                        .progressViewStyle(.linear)
+                        .tint(AppTheme.Color.primary)
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: 11))
+                        Text("下载中 \(Int(prog * 100))%")
+                            .font(AppTheme.Font.caption2())
+                        Spacer()
+                    }
+                    .foregroundColor(AppTheme.Color.primary)
+                }
+                .padding(.top, AppTheme.Spacing.xs)
+            } else if let st = downloader.status[item.url] {
+                // 完成 / 失败：文案 + 图标
                 HStack(spacing: AppTheme.Spacing.xs) {
                     Image(systemName: statusIcon(st))
                         .font(.system(size: 11))

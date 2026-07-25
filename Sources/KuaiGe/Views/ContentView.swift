@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = SniffStore()
-    @StateObject private var downloader = DownloadManager()
+    @ObservedObject private var downloader = DownloadManager.shared
     @State private var selectedTab: Int = 0
     @State private var showUpgrade = false
 
