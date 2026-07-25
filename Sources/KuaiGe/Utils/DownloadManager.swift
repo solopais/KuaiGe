@@ -244,7 +244,7 @@ final class DownloadManager: ObservableObject {
         do {
             let contents = try fm.contentsOfDirectory(atPath: downloadsDir.path)
             for file in contents {
-                try fm.removeItem(at: downloadsDir.appendingPathComponent(file).path)
+                try fm.removeItem(at: downloadsDir.appendingPathComponent(file))
             }
             print("[DownloadManager] 已清空下载目录，共删 \(contents.count) 个文件")
         } catch {

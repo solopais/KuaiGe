@@ -9,7 +9,7 @@ enum MediaKind: String, Codable, Hashable {
 
 /// 嗅探到的媒体资源（音频 / 视频 直链）
 struct SniffedMedia: Identifiable, Hashable, Codable {
-    let id = UUID()
+    var id = UUID()          // var 以支持 Codable 解码（持久化后恢复时重新生成）
     let url: String
     /// 捕获来源：media-src / fetch / fetch-resp / xhr / media-element / nested-source / source-attr / blob-audio / blob-video
     let source: String
