@@ -191,10 +191,11 @@ struct BrowserView: UIViewRepresentable {
 
                 if code == 403 || code == 406 || code == 451 {
                     let headers = httpResponse.allHeaderFields
+                    let robotsTag = headers["X-Robots-Tag"] as? String
                     let isAntiBot = headers["X-TT-System-Error"] != nil ||
                                     headers["X-Douyin-Error"] != nil ||
                                     headers["X-Block"] != nil ||
-                                    headers["X-Robots-Tag"]?.contains("noindex") == true
+                                    robotsTag?.contains("noindex") == true
 
                     #if DEBUG
                     print("[KuaiGe] ⚠️ 服务端拒绝 (\(code)): \(urlStr)")

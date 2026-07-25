@@ -9,7 +9,7 @@ import Foundation
 /// 4. 不依赖 DOM、不受 CSP/ CORS 策略影响
 ///
 /// 使用方式：在 BrowserView.makeUIView 中调用 `KuaiGeURLProtocol.register(store:)`
-class KuaiGeURLProtocol: NSURLProtocol {
+class KuaiGeURLProtocol: URLProtocol {
 
     // MARK: - 常量定义
 
@@ -119,17 +119,18 @@ class KuaiGeURLProtocol: NSURLProtocol {
             return
         }
 
-        // 标记请求防止递归
+        // 标记请求防止递归（URLProtocol.setProperty 是类方法，需传 URLRequest）
         let mutableRequest = (request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
-        KuaiGeURLProtocol.setValue("true", forKey: "KuaiGeHandled", in: mutableRequest)
-        finalRequest = mutableRequest as URLRequest
+        let finalReq: URLRequest = mutableRequest as URLRequest
+        URLProtocol.setProperty("true", forKey: "KuaiGeHandled", in: finalReq)
+        finalRequest = finalReq
 
         // 用原始请求的 headers 创建新任务
         let config = URLSessionConfiguration.default
         config.httpAdditionalHeaders = request.allHTTPHeaderFields ?? [:]
         let session = URLSession(configuration: config)
 
-        dataTask = session.dataTask(with: finalRequest) { [weak self] data, response, error in
+        dataTask = session.dataTask(with: finalReq) { [weak self] data, response, error in
             guard let self = self else { return }
 
             if let error = error {
