@@ -156,7 +156,7 @@ struct ExtractorView: View {
             .background(AppTheme.Color.background.ignoresSafeArea())
             .navigationTitle(mode == .audio ? "音频提取" : "视频提取")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .compatibleToolbarColorScheme(.light, for: .navigationBar)
             .sheet(isPresented: Binding(
                 get: { playingURL != nil },
                 set: { if !$0 { playingURL = nil } }

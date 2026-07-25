@@ -40,4 +40,25 @@ extension View {
             self
         }
     }
+
+    /// .toolbarColorScheme(_:for:) 是 iOS 16+；iOS 15 下无此 API（导航栏配色由 UINavigationBarAppearance 控制），直接透传原 View。
+    @ViewBuilder
+    func compatibleToolbarColorScheme(_ scheme: ColorScheme, for bar: NavigationBarPlacement) -> some View {
+        if #available(iOS 16.0, *) {
+            self.toolbarColorScheme(scheme, for: bar)
+        } else {
+            self
+        }
+    }
+
+    /// 条件应用修饰符（View.buildIf，iOS 13+ 可用）。用于在 iOS 15 下按条件挂载 .toolbar，
+    /// 避免把 `if` 写进 .toolbar 闭包而触发 ToolbarContentBuilder.buildIf（iOS 16+）。
+    @ViewBuilder
+    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
 }

@@ -22,8 +22,8 @@ struct HistoryView: View {
             .background(AppTheme.Color.background.ignoresSafeArea())
             .navigationTitle("历史记录")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if !store.items.isEmpty {
+            .if(!store.items.isEmpty) {
+                $0.toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button {
                             if license.isPro {
