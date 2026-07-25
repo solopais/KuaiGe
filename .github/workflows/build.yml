@@ -25,13 +25,41 @@ jobs:
         with:
           xcode-version: "15.4"
 
-      - name: Install XcodeGen (binary, no Homebrew)
+      - name: Install XcodeGen
+        timeout-minutes: 10
         run: |
-          # 直接下载 xcodegen 二进制，避免 brew install 耗时 30+ 分钟
-          curl -sL "https://github.com/yonaskolb/XcodeGen/releases/download/2.35.0/xcodegen.zip" \
-            -o /tmp/xcodegen.zip && \
-          unzip -qo /tmp/xcodegen.zip -d /usr/local/bin/ && \
-          chmod +x /usr/local/bin/xcodegen && \
+          set -e
+
+          # 方案 A：直接下载二进制（最快）
+          XCG_VERSION="2.35.0"
+          XCG_URL="https://github.com/yonaskolb/XcodeGen/releases/download/${XCG_VERSION}/xcodegen.zip"
+
+          echo "--- 尝试直接下载 XcodeGen ${XCG_VERSION} ---"
+          if curl -fSL "$XCG_URL" -o /tmp/xcodegen.zip; then
+            mkdir -p /usr/local/bin
+            # xcodegen.zip 解压后根目录就是 xcodegen 可执行文件
+            unzip -o /tmp/xcodegen.zip -d /tmp/xcodegen_tmp/
+            # 找到解压出的可执行文件并安装
+            FOUND=$(find /tmp/xcodegen_tmp -type f -name "xcodegen" | head -1)
+            if [ -n "$FOUND" ]; then
+              cp "$FOUND" /usr/local/bin/xcodegen
+              chmod +x /usr/local/bin/xcodegen
+              rm -rf /tmp/xcodegen_tmp /tmp/xcodegen.zip
+              echo "✅ XcodeGen 二进制安装成功"
+              xcodegen version
+              exit 0
+            else
+              echo "⚠️ zip 中未找到 xcodegen 可执行文件，回退到 Homebrew"
+            fi
+          else
+            echo "⚠️ 直接下载失败 (HTTP 非 200)，回退到 Homebrew"
+          fi
+
+          # 方案 B：Homebrew 安装（较慢但可靠）
+          echo "--- Homebrew 安装 XcodeGen ---"
+          brew update --auto-update || true
+          brew install xcodegen
+          echo "✅ XcodeGen 通过 Homebrew 安装成功"
           xcodegen version
 
       - name: Generate Xcode project
