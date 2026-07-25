@@ -4,9 +4,11 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var store: SniffStore
     @ObservedObject var downloader: DownloadManager
+    @ObservedObject private var license = LicenseManager.shared
 
     @State private var playingURL: String? = nil
     @State private var showClearAlert = false
+    @State private var exported = false
 
     var body: some View {
         NavigationStack {
@@ -22,8 +24,27 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !store.items.isEmpty {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            if license.isPro {
+                                exportAllLinks()
+                            } else {
+                                NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+                            }
+                        } label: {
+                            Label("导出直链", systemImage: "square.and.arrow.up")
+                                .font(AppTheme.Font.caption())
+                                .foregroundColor(license.isPro ? AppTheme.Color.primary : AppTheme.Color.textTertiary)
+                        }
+                    }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button { showClearAlert = true } label: {
+                        Button {
+                            if license.isPro {
+                                showClearAlert = true
+                            } else {
+                                NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+                            }
+                        } label: {
                             Text("清空")
                                 .font(AppTheme.Font.caption())
                                 .foregroundColor(AppTheme.Color.error)
@@ -47,7 +68,30 @@ struct HistoryView: View {
                     MediaPlayerView(url: url)
                 }
             }
+            .overlay(alignment: .bottom) {
+                if exported {
+                    Text("已复制 \(store.items.count) 条直链到剪贴板")
+                        .font(AppTheme.Font.caption())
+                        .foregroundColor(AppTheme.Color.textOnPrimary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.Color.textPrimary.opacity(0.9))
+                        .cornerRadius(AppTheme.Radius.pill)
+                        .padding(.bottom, 24)
+                        .transition(.opacity)
+                        .animation(.easeInOut, value: exported)
+                }
+            }
         }
+    }
+
+    // MARK: - 专业版：导出全部直链
+    private func exportAllLinks() {
+        let links = store.items.map { $0.url }.joined(separator: "\n")
+        UIPasteboard.general.string = links
+        exported = true
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { exported = false }
     }
 
     // MARK: - 列表视图

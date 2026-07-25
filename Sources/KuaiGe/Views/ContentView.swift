@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var store = SniffStore()
     @StateObject private var downloader = DownloadManager()
     @State private var selectedTab: Int = 0
+    @State private var showUpgrade = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -24,9 +25,21 @@ struct ContentView: View {
                     Label("历史", systemImage: "clock")
                 }
                 .tag(2)
+
+            ProfileView()
+                .tabItem {
+                    Label("我的", systemImage: "person")
+                }
+                .tag(3)
         }
         .tint(AppTheme.Color.primary)
         .onAppear { applyGlobalAppearance() }
+        .onReceive(NotificationCenter.default.publisher(for: .kuaiGeRequirePro)) { _ in
+            showUpgrade = true
+        }
+        .sheet(isPresented: $showUpgrade) {
+            UpgradeView()
+        }
     }
 
     private func applyGlobalAppearance() {
@@ -81,6 +94,11 @@ struct ExtractorView: View {
                         .progressViewStyle(LinearProgressViewStyle(tint: AppTheme.Color.primary))
                         .padding(.horizontal, AppTheme.Spacing.lg)
                         .padding(.vertical, AppTheme.Spacing.xs)
+                }
+
+                // 专业版锁定横幅（免费版显示，点按前往也会拦截）
+                if !LicenseManager.shared.isPro {
+                    proLockBanner
                 }
 
                 // 当前加载地址（便于确认「粘贴是否生效 / WebView 是否在加载」）
@@ -237,6 +255,11 @@ struct ExtractorView: View {
     }
 
     private func go() {
+        // 免费版拦截：任何功能都需专业版
+        guard LicenseManager.shared.isPro else {
+            NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+            return
+        }
         var trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         // 链接兜底：无 scheme 时自动补 https://，否则 URL(string:) 解析失败导致「没反应」
@@ -246,6 +269,28 @@ struct ExtractorView: View {
         guard let u = URL(string: trimmed) else { return }
         pageError = nil  // 重置错误状态
         loadURL = u
+    }
+
+    // MARK: - 专业版锁定横幅
+    private var proLockBanner: some View {
+        Button {
+            NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 12))
+                Text("专业版功能：粘贴链接前往前，请先到「我的」激活")
+                    .font(AppTheme.Font.caption())
+                    .lineLimit(1)
+                Spacer()
+                Text("去激活")
+                    .font(AppTheme.Font.caption().weight(.semibold))
+            }
+            .foregroundColor(AppTheme.Color.primary)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.sm)
+            .background(AppTheme.Color.primaryLight)
+        }
     }
 
     // MARK: - 页面加载错误提示

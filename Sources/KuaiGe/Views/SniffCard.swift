@@ -138,6 +138,10 @@ struct SniffCard: View {
                 label: playingURL == item.url ? "暂停" : "播放",
                 tint: AppTheme.Color.primary
             ) {
+                guard LicenseManager.shared.isPro else {
+                    NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+                    return
+                }
                 playingURL = (playingURL == item.url) ? nil : item.url
             }
 
@@ -147,6 +151,10 @@ struct SniffCard: View {
                 label: "下载",
                 tint: AppTheme.Color.textSecondary
             ) {
+                guard LicenseManager.shared.isPro else {
+                    NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+                    return
+                }
                 DownloadManager.shared.download(item, store: store) { _ in }
             }
 
@@ -201,6 +209,10 @@ struct SniffCard: View {
 
     // MARK: - 工具方法
     private func copyURL() {
+        guard LicenseManager.shared.isPro else {
+            NotificationCenter.default.post(name: .kuaiGeRequirePro, object: nil)
+            return
+        }
         UIPasteboard.general.string = item.url
         withAnimation(.easeInOut(duration: 0.15)) {
             copied = true
