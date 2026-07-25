@@ -119,10 +119,10 @@ class KuaiGeURLProtocol: URLProtocol {
             return
         }
 
-        // 标记请求防止递归（URLProtocol.setProperty 是类方法，需传 URLRequest）
+        // 标记请求防止递归（URLProtocol.setProperty 类方法需传 NSMutableURLRequest）
         let mutableRequest = (request as NSURLRequest).mutableCopy() as! NSMutableURLRequest
+        URLProtocol.setProperty("true", forKey: "KuaiGeHandled", in: mutableRequest)
         let finalReq: URLRequest = mutableRequest as URLRequest
-        URLProtocol.setProperty("true", forKey: "KuaiGeHandled", in: finalReq)
         finalRequest = finalReq
 
         // 用原始请求的 headers 创建新任务
