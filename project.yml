@@ -24,7 +24,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kuaige.sniffer
-        PRODUCT_NAME: KuaiGe
+        PRODUCT_NAME: AI音乐视频提取助手
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: KuaiGe.entitlements
     info:

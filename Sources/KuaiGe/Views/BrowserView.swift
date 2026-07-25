@@ -1,6 +1,11 @@
 import SwiftUI
 import WebKit
 
+/// 通知：停止 WebView 中所有正在播放的音视频
+extension Notification.Name {
+    static let kuaiGeStopMedia = Notification.Name("kuaiGeStopMedia")
+}
+
 /// 包裹 WKWebView：注入 JS 嗅探脚本，扫描页面上的音视频资源
 /// （即「F12 抓媒体」的核心：DOM 扫描 + fetch/XHR 拦截 + Performance API）
 struct BrowserView: UIViewRepresentable {
@@ -54,6 +59,14 @@ struct BrowserView: UIViewRepresentable {
 
         context.coordinator.webView = webView
         webView.addObserver(context.coordinator, forKeyPath: "estimatedProgress", options: .new, context: nil)
+
+        // 监听「停止媒体」通知（切换页面/Tab 时触发，防止后台继续播放）
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.stopAllMedia(_:)),
+            name: .kuaiGeStopMedia,
+            object: nil
+        )
 
         return webView
     }
@@ -223,8 +236,36 @@ struct BrowserView: UIViewRepresentable {
         func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) { completionHandler(false) }
         func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) { completionHandler(nil) }
 
+        /// 停止页面中所有正在播放的音视频（切换 Tab/返回时调用）
+        @objc func stopAllMedia(_ notification: Notification) {
+            guard let wv = webView else { return }
+            wv.evaluateJavaScript("""
+                (function(){
+                    var els = document.querySelectorAll('audio, video');
+                    els.forEach(function(el){
+                        el.pause();
+                        el.currentTime = 0;
+                        el.removeAttribute('src');
+                        el.load();
+                    });
+                    return els.length;
+                })();
+            """) { result, error in
+                if let err = error {
+                    #if DEBUG
+                    print("[KuaiGe] 停止媒体失败: \(err.localizedDescription)")
+                    #endif
+                } else if let n = result as? Int, n > 0 {
+                    #if DEBUG
+                    print("[KuaiGe] 已停止 \(n) 个媒体元素")
+                    #endif
+                }
+            }
+        }
+
         deinit {
             webView?.removeObserver(self, forKeyPath: "estimatedProgress")
+            NotificationCenter.default.removeObserver(self, name: .kuaiGeStopMedia, object: nil)
         }
     }
 }

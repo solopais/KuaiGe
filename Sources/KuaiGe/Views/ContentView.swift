@@ -95,6 +95,10 @@ struct ExtractorView: View {
                             pageError: $pageError
                         )
                         .frame(height: geo.size.height * (filtered.isEmpty ? 1.0 : 0.5))
+                        .onDisappear {
+                            // 切换 Tab / 返回时停止 WebView 中的媒体播放
+                            NotificationCenter.default.post(name: .kuaiGeStopMedia, object: nil)
+                        }
 
                         // 结果列表（有数据时显示）
                         if !filtered.isEmpty {

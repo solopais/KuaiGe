@@ -71,7 +71,7 @@ struct SniffCard: View {
         }
     }
 
-    // MARK: - 副标题：域名 + 来源
+    // MARK: - 副标题：域名 + 来源 + 时间
     private var subtitleRow: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
             if !item.displayDomain.isEmpty {
@@ -88,6 +88,13 @@ struct SniffCard: View {
                 .foregroundColor(AppTheme.Color.textTertiary)
 
             Text(item.sourceLabel)
+                .font(AppTheme.Font.caption2())
+                .foregroundColor(AppTheme.Color.textTertiary)
+
+            Text("·")
+                .foregroundColor(AppTheme.Color.textTertiary)
+
+            Text(item.detectedAtFormatted)
                 .font(AppTheme.Font.caption2())
                 .foregroundColor(AppTheme.Color.textTertiary)
 

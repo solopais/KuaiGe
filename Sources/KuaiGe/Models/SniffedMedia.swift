@@ -96,6 +96,30 @@ struct SniffedMedia: Identifiable, Hashable {
         }
     }
 
+    /// 格式化的提取时间（如 "14:30" 或 "昨天 14:30"）
+    var detectedAtFormatted: String {
+        let cal = Calendar.current
+        let now = Date()
+        if cal.isDateInToday(detectedAt) {
+            let f = DateFormatter()
+            f.dateFormat = "HH:mm"
+            return f.string(from: detectedAt)
+        } else if cal.isDateInYesterday(detectedAt) {
+            let f = DateFormatter()
+            f.dateFormat = "HH:mm"
+            return "昨天 " + f.string(from: detectedAt)
+        } else if detectedAt > cal.date(byAdding: .day, value: -7, to: now) ?? now {
+            let f = DateFormatter()
+            f.dateFormat = "EEEE HH:mm"
+            f.locale = Locale(identifier: "zh_CN")
+            return f.string(from: detectedAt)
+        } else {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy/MM/dd HH:mm"
+            return f.string(from: detectedAt)
+        }
+    }
+
     // MARK: - 内部工具
 
     private func extensionFromPath(_ path: String) -> String {
