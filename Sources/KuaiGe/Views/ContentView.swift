@@ -105,7 +105,7 @@ struct SniffBrowserView: View {
             }
             .navigationTitle("🔍 嗅探")
             .navigationBarTitleDisplayMode(.inline)
-            .compatibleToolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
         }
         .navigationViewStyle(.stack)
         .sheet(isPresented: $showSniffResults) {
@@ -153,7 +153,8 @@ struct SniffBrowserView: View {
                 Image(systemName: "music.note")
                     .font(.caption)
                 Text("已嗅探到 \(store.items.count) 条音频，点击查看 →")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.caption)
+                    .fontWeight(.medium)
             }
             .foregroundColor(.white)
             .padding(.horizontal, 14)
@@ -177,19 +178,5 @@ struct SniffBrowserView: View {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let u = URL(string: trimmed) else { return }
         loadURL = u
-    }
-}
-
-// MARK: - iOS 15 兼容封装
-// .toolbarColorScheme(_:for:) 是 iOS 16 才加入的，部署目标为 iOS 15 时不可用。
-// 用 @ViewBuilder + #available 包一层：iOS 16+ 应用原效果，iOS 15 走 no-op。
-extension View {
-    @ViewBuilder
-    func compatibleToolbarColorScheme(_ scheme: ColorScheme, for bars: ToolbarPlacement...) -> some View {
-        if #available(iOS 16.0, *) {
-            self.toolbarColorScheme(scheme, for: bars)
-        } else {
-            self
-        }
     }
 }
