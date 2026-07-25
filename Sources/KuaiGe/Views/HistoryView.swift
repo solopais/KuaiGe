@@ -55,6 +55,13 @@ struct HistoryView: View {
             .alert("清空记录", isPresented: $showClearAlert) {
                 Button("取消", role: .cancel) {}
                 Button("清空全部", role: .destructive) {
+                    // 先删除所有已下载到本地的文件，释放手机存储
+                    for item in store.items {
+                        if let path = item.downloadedLocalPath,
+                           FileManager.default.fileExists(atPath: path) {
+                            try? FileManager.default.removeItem(atPath: path)
+                        }
+                    }
                     withAnimation(.easeInOut(duration: 0.25)) { store.clear() }
                 }
             } message: {
@@ -107,6 +114,8 @@ struct HistoryView: View {
                         trailing: AppTheme.Spacing.lg
                     ))
                     .listRowBackground(Color.clear)
+                    // 禁用 List 行默认点击高亮，防止与 SniffCard 内按钮冲突
+                    .onTapGesture { }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             withAnimation(.easeInOut(duration: 0.25)) {

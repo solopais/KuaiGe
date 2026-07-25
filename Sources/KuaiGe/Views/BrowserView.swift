@@ -73,9 +73,13 @@ struct BrowserView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         guard let url = loadURL else { return }
-        // 用 coordinator 记录「主动加载过的 URL」，避免依赖 webView.url 在 load 调用后
-        // 立即变化而导致漏加载或重复加载
-        guard context.coordinator.lastLoadedURL != url else { return }
+
+        // 防重复加载：仅在 WebView 当前确实已显示目标页时跳过
+        // （用户返回后 webView.url 已变，此时重新粘贴同一 URL 应允许重载）
+        if context.coordinator.lastLoadedURL == url,
+           webView.url?.absoluteString == url.absoluteString {
+            return
+        }
 
         var request = URLRequest(url: url)
         // 只补中文语言偏好，其余交给系统默认请求头（不再伪造任何浏览器指纹头）

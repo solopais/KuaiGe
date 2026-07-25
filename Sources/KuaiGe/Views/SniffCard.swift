@@ -127,7 +127,7 @@ struct SniffCard: View {
         .padding(.vertical, AppTheme.Spacing.sm)
         .background(AppTheme.Color.surface)
         .cornerRadius(AppTheme.Radius.sm)
-        .onTapGesture { copyURL() }
+        // 删掉 .onTapGesture { copyURL() } —— 改用上方显式「复制」Button，防止整行点击都触发复制
     }
 
     // MARK: - 操作按钮行
@@ -225,7 +225,7 @@ struct SniffCard: View {
         }
     }
 
-    // MARK: - 紧凑操作按钮
+    // MARK: - 紧凑操作按钮（精确 hit area，防重叠）
     private func compactAction(icon: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
@@ -240,6 +240,8 @@ struct SniffCard: View {
             .background(tint.opacity(0.08))
             .cornerRadius(AppTheme.Radius.sm)
         }
+        .buttonStyle(.plain)          // 去掉默认 Button 放大效果
+        .contentShape(Rectangle())    // 精确命中：只响应视觉区域内的点击
     }
 
     // MARK: - 工具方法
