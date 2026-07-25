@@ -97,7 +97,6 @@ jobs:
             -addext "extendedKeyUsage=codeSigning"
 
           openssl pkcs12 -export -out /tmp/cert.p12 \
-            -legacy \
             -inkey /tmp/cert-key.pem -in /tmp/cert.pem \
             -passout pass:"$KEYCHAIN_PASS" -name "KuaiGe Dev"
 
