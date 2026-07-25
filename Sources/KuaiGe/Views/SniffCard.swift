@@ -278,15 +278,38 @@ struct SniffCard: View {
     }
 }
 
-// MARK: - 系统分享面板封装
+// MARK: - 系统分享面板封装（用容器 VC 解决 SwiftUI .sheet 白板问题）
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    func makeUIViewController(context: Context) -> some UIViewController {
+        let host = SharingHostController(items: items)
+        return host
     }
 
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+    func updateUIViewController(_ vc: UIViewControllerType, context: Context) {}
+}
+
+/// 真正的容器 VC：viewDidLoad 内部 present UIActivityViewController
+/// （直接在 .sheet 里用 UIActivityViewController 会渲染白板，这是已知 SwiftUI bug）
+private final class SharingHostController: UIViewController {
+    let items: [Any]
+    init(items: [Any]) { self.items = items; super.init(nibName: nil, bundle: nil) }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
+
+        let avc = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        // iPad 兼容：必须设置 popover source，否则 crash
+        if let popover = avc.popoverPresentationController {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = .any
+        }
+        present(avc, animated: true)
+    }
 }
 
 // MARK: - 内嵌播放器（音频 / 视频通用）

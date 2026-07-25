@@ -236,4 +236,22 @@ final class DownloadManager: ObservableObject {
             return false
         }
     }
+
+    /// 清空所有已下载文件和缓存（释放手机存储）
+    func clearAllDownloads() {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: downloadsDir.path) else { return }
+        do {
+            let contents = try fm.contentsOfDirectory(atPath: downloadsDir.path)
+            for file in contents {
+                try fm.removeItem(at: downloadsDir.appendingPathComponent(file).path)
+            }
+            print("[DownloadManager] 已清空下载目录，共删 \(contents.count) 个文件")
+        } catch {
+            print("[DownloadManager] 清空下载目录失败: \(error)")
+        }
+        // 清除内存中的下载状态
+        status.removeAll()
+        progress.removeAll()
+    }
 }
