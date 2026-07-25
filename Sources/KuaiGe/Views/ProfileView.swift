@@ -115,7 +115,7 @@ struct ProfileView: View {
                         codeText = ""
                         showSuccess = true
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { showSuccess = false }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) { showSuccess = false }
                     } else {
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
                     }
@@ -187,7 +187,7 @@ struct ProfileView: View {
             HStack(spacing: AppTheme.Spacing.sm) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppTheme.Color.primary)
+                    .foregroundColor(contactBlue)
                 Text("激活码购买联系")
                     .font(AppTheme.Font.title2())
                     .foregroundColor(AppTheme.Color.textPrimary)
@@ -205,7 +205,7 @@ struct ProfileView: View {
                 HStack(spacing: AppTheme.Spacing.sm) {
                     Image(systemName: "bag.fill")
                         .font(.system(size: 13))
-                        .foregroundColor(AppTheme.Color.primary)
+                        .foregroundColor(contactBlue)
                         .frame(width: 18)
                     Text("闲鱼店铺")
                         .font(AppTheme.Font.caption())
@@ -231,7 +231,7 @@ struct ProfileView: View {
         HStack(spacing: AppTheme.Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 13))
-                .foregroundColor(AppTheme.Color.textTertiary)
+                .foregroundColor(contactBlue)
                 .frame(width: 18)
             Text(label)
                 .font(AppTheme.Font.caption())
@@ -274,7 +274,10 @@ private let goldGradient = LinearGradient(
 private let goldBright = Color(red: 1.0, green: 0.9, blue: 0.62)
 private let goldDim = Color(red: 0.78, green: 0.7, blue: 0.45)
 
-/// 黑金扫光卡片：纯黑底 + 金色描边 + 循环扫光高光
+/// 统一深蓝色（联系方式图标，与闲鱼店铺风格一致）
+private let contactBlue = Color(red: 0.0, green: 0.184, blue: 0.655) // #002FA7 克莱因蓝
+
+/// 黑金扫光卡片：纯黑底 + 金色描边 + 细窄循环扫光（自然质感）
 struct ShimmerCard<Content: View>: View {
     let content: Content
     @State private var sweep = false
@@ -292,13 +295,19 @@ struct ShimmerCard<Content: View>: View {
             .overlay(
                 GeometryReader { geo in
                     LinearGradient(
-                        colors: [.clear, Color.white.opacity(0.5), .clear],
+                        colors: [
+                            .clear,
+                            Color.white.opacity(0.08),
+                            Color(red: 1, green: 0.92, blue: 0.55).opacity(0.12),
+                            Color.white.opacity(0.08),
+                            .clear
+                        ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
-                    .frame(width: geo.size.width * 0.6)
-                    .rotationEffect(.degrees(18))
-                    .offset(x: sweep ? geo.size.width * 1.4 : -geo.size.width * 0.9)
+                    .frame(width: geo.size.width * 0.22)
+                    .rotationEffect(.degrees(12))
+                    .offset(x: sweep ? geo.size.width * 1.3 : -geo.size.width * 0.5)
                     .allowsHitTesting(false)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.lg))
@@ -308,38 +317,65 @@ struct ShimmerCard<Content: View>: View {
                     .stroke(goldGradient, lineWidth: 1.5)
             )
             .onAppear {
-                withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) {
+                withAnimation(.linear(duration: 3.0).repeatForever(autoreverses: false)) {
                     sweep = true
                 }
             }
     }
 }
 
-/// 激活成功动效：金色对勾弹簧放大 + 淡出，给用户获得感
+/// 激活成功动效：金色对勾弹簧放大 + 停留 + 缓慢淡出，让用户充分感受激活成功的满足感
 struct SuccessBurst: View {
-    @State private var scale: CGFloat = 0.3
+    @State private var scale: CGFloat = 0.2
     @State private var opacity: Double = 0
+    @State private var glowOpacity: Double = 0
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.35)
+            // 半透明压暗背景
+            Color.black.opacity(0.4)
                 .ignoresSafeArea()
-                .opacity(opacity * 0.5)
+                .opacity(opacity * 0.6)
+
+            // 光晕扩散层
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(red: 1, green: 0.84, blue: 0).opacity(glowOpacity * 0.35),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 120
+                    )
+                )
+                .frame(width: 200, height: 200)
+
+            // 金色对勾主体
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 90, weight: .bold))
                 .foregroundStyle(goldGradient)
-                .shadow(color: Color(red: 1, green: 0.84, blue: 0).opacity(0.85), radius: 24, x: 0, y: 0)
+                .shadow(color: Color(red: 1, green: 0.84, blue: 0).opacity(0.9), radius: 28, x: 0, y: 0)
                 .scaleEffect(scale)
                 .opacity(opacity)
         }
         .allowsHitTesting(false)
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.55)) {
-                scale = 1
+            // 阶段1：弹性放大弹出
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.5)) {
+                scale = 1.05
                 opacity = 1
+                glowOpacity = 1
             }
-            withAnimation(.easeOut(duration: 0.45).delay(1.0)) {
+            // 阶段2：轻微回弹到自然大小
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.55)) {
+                scale = 1.0
+            }
+            // 阶段3：缓慢淡出（用户看清后才开始消失）
+            withAnimation(.easeOut(duration: 0.8).delay(2.0)) {
                 opacity = 0
+                glowOpacity = 0
             }
         }
     }

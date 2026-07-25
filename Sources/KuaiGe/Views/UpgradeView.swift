@@ -123,7 +123,7 @@ struct UpgradeView: View {
                 HStack(spacing: AppTheme.Spacing.sm) {
                     Image(systemName: "bag.fill")
                         .font(.system(size: 13))
-                        .foregroundColor(AppTheme.Color.primary)
+                        .foregroundColor(Color(red: 0.0, green: 0.184, blue: 0.655))
                         .frame(width: 18)
                     Text("闲鱼店铺")
                         .font(AppTheme.Font.caption())
@@ -149,7 +149,7 @@ struct UpgradeView: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 12))
-                .foregroundColor(AppTheme.Color.primary)
+                .foregroundColor(Color(red: 0.0, green: 0.184, blue: 0.655))
             Text(label)
                 .font(AppTheme.Font.caption())
                 .foregroundColor(AppTheme.Color.textSecondary)

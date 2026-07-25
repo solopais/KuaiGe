@@ -54,6 +54,8 @@ struct ContentView: View {
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
         navAppearance.backgroundColor = UIColor(AppTheme.Color.background)
+        navAppearance.shadowColor = .clear          // 移除底部 hairline 分割线
+        navAppearance.shadowImage = UIImage()
         navAppearance.titleTextAttributes = [
             .foregroundColor: UIColor(AppTheme.Color.textPrimary),
             .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
