@@ -116,6 +116,8 @@ struct SniffCard: View {
                     .font(AppTheme.Font.caption())
                     .foregroundColor(copied ? AppTheme.Color.success : AppTheme.Color.primary)
             }
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.sm)

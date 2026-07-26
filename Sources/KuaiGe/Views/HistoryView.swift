@@ -110,8 +110,6 @@ struct HistoryView: View {
                         trailing: AppTheme.Spacing.lg
                     ))
                     .listRowBackground(Color.clear)
-                    // 禁用 List 行默认点击高亮，防止与 SniffCard 内按钮冲突
-                    .onTapGesture { }
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             withAnimation(.easeInOut(duration: 0.25)) {
